@@ -1,0 +1,58 @@
+{
+  "name": "@intenus/walrus",
+  "version": "0.2.0",
+  "description": "Walrus storage wrapper for Intenus Protocol (AI infra standard)",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@intenus/common": "workspace:*",
+    "@mysten/walrus": "^0.8.3",
+    "@mysten/sui": "^1.44.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "tsup": "^8.0.0",
+    "vitest": "^1.0.0"
+  },
+  "peerDependencies": {
+    "@mysten/walrus": "^0.8.3",
+    "@mysten/sui": "^1.44.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "walrus",
+    "storage", 
+    "intenus",
+    "defi",
+    "sui",
+    "typescript"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/intenus/sdks.git",
+    "directory": "packages/walrus"
+  }
+}

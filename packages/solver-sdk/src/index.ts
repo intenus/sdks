@@ -2,6 +2,7 @@
 export { SolverListener } from './listener.js';
 export { SolutionBuilder } from './builder.js';
 export { P2PMatcher } from './matcher.js';
+export { WalrusBatchFetcher } from './walrus-fetcher.js';
 
 // Export types
 export type { P2PMatch } from './matcher.js';
@@ -17,4 +18,6 @@ export type {
   SolutionOutcome,
   BatchManifest,
   IntentReference,
+  WalrusBatchManifest,
+  StorageResult,
 } from '@intenus/common';

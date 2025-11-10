@@ -12,37 +12,60 @@ Minimal TypeScript SDKs for the Intenus Protocol. Provides types, utilities, and
 ## 📦 Packages
 
 ### [@intenus/common](./packages/common)
+
 **Pure TypeScript types** - Zero runtime dependencies
+
 - `Intent`, `Batch`, `Solution` type definitions
 - Protocol constants and configuration
 - Walrus storage path types
 
-### [@intenus/solver-sdk](./packages/solver-sdk) 
+### [@intenus/solver-sdk](./packages/solver-sdk)
+
 **Optional utilities** for solver developers
+
 - `SolverListener` - Redis subscription management
 - `SolutionBuilder` - Transaction composition utilities  
 - `P2PMatcher` - Reference matching implementation
 
 ### [@intenus/client-sdk](./packages/client-sdk)
+
 **Optional utilities** for client applications
+
 - `IntentBuilder` - Fluent intent construction API
 - `PTBExecutor` - Transaction signing and submission utilities
+
+### [@intenus/walrus](./packages/walrus)
+
+**Walrus storage wrapper** with AI infrastructure standards
+
+- `IntenusWalrusClient` - Structured storage services (batches, archives, users, training)
+- `StoragePathBuilder` - Type-safe path construction
+- SOLID principles with Strategy, Builder, and Facade patterns
 
 ## 🚀 Quick Start
 
 ### Installation
 
 For solver development:
+
 ```bash
 npm install @intenus/solver-sdk @mysten/sui @mysten/walrus @mysten/seal ioredis
 ```
 
 For client applications:
+
 ```bash
 npm install @intenus/client-sdk @mysten/sui @mysten/walrus @mysten/seal
 ```
 
+For Walrus storage:
+
+```bash
+npm install @intenus/walrus @mysten/walrus @mysten/sui
+```
+
 For type definitions only:
+
 ```bash
 npm install @intenus/common
 ```
@@ -116,6 +139,41 @@ const result = await executor.execute(rankedPTB, wallet);
 
 ## 📚 Examples
 
+### Walrus Storage
+
+```typescript
+import { IntenusWalrusClient } from '@intenus/walrus';
+
+const client = new IntenusWalrusClient({
+  network: 'testnet',
+});
+
+// Store batch manifest
+const manifest = {
+  batch_id: 'batch_12345',
+  epoch: 1000,
+  intent_count: 100,
+  intents: [/* ... */],
+  categories: { swap: 80, lending: 20 },
+  estimated_value_usd: 50000,
+  solver_deadline: Date.now() + 5000,
+  created_at: Date.now(),
+  requirements: {
+    min_tee_verification: true,
+    min_stake_required: '1000000000000',
+    max_solutions_per_solver: 1,
+  },
+};
+
+const result = await client.batches.storeManifest(manifest, signer);
+console.log('Stored:', result.blob_id);
+
+// Fetch batch manifest
+const fetchedManifest = await client.batches.fetchManifest(1000);
+```
+
+### Additional Examples
+
 - [Basic Solver](./examples/solver-basic) - Getting started with solver development
 - [Advanced Solver](./examples/solver-advanced) - Custom implementation patterns  
 - [Client Application](./examples/client-basic) - Intent creation and execution
@@ -163,10 +221,6 @@ This design ensures maximum flexibility while providing helpful abstractions whe
 2. **No SDK wrapping** - Direct integration with existing Mysten Labs SDKs
 3. **Type-first approach** - Comprehensive TypeScript support throughout
 4. **Production ready** - Battle-tested in live trading environments
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details.
 
 ## 📄 License
 

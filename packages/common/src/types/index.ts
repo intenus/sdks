@@ -27,3 +27,17 @@ export type {
   ExecutionSummary,
   Explanation,
 } from './solution.js';
+
+// Walrus storage types
+export type {
+  BatchIntent,
+  BatchManifest as WalrusBatchManifest,
+  ArchivedSolution,
+  ExecutionOutcome,
+  MLFeatures,
+  BatchArchive,
+  UserHistoryAggregated,
+  TrainingDatasetMetadata,
+  ModelMetadata,
+  StorageResult,
+} from './walrus.js';

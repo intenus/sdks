@@ -64,4 +64,10 @@ temp/
 # Yarn Integrity file
 .yarn-integrity
 
+# Lock files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+bun.lockb
+
 INSTRUCTIONS.md
