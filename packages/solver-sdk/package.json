@@ -1,0 +1,52 @@
+{
+  "name": "@intenus/solver-sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "intenus",
+    "sui",
+    "defi",
+    "solver",
+    "intent"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@intenus/common": "workspace:*",
+    "@mysten/sui": "^1.44.0",
+    "ioredis": "^5.3.0"
+  },
+  "peerDependencies": {
+    "@mysten/seal": "^0.9.3",
+    "@mysten/walrus": "^0.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "latest",
+    "tsup": "latest",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}

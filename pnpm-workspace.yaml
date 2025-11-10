@@ -1,0 +1,3 @@
+packages:
+  - 'packages/*'
+  # - 'examples/*'  # Temporarily disabled due to API changes

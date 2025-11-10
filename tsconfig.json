@@ -1,0 +1,8 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/common" },
+    { "path": "./packages/solver-sdk" },
+    { "path": "./packages/client-sdk" }
+  ]
+}
