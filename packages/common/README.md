@@ -1,229 +1,134 @@
 # @intenus/common
 
-**Pure TypeScript types** for the Intenus Protocol. This package contains only type definitions and constants - **zero runtime dependencies**.
+The `@intenus/common` package is the foundational module for the Intenus SDK ecosystem. It provides a comprehensive set of shared TypeScript type definitions, protocol constants, and essential utilities. This package has zero runtime dependencies, ensuring it can be used in any environment without adding bloat.
 
-## 📦 Installation
-
+## Installation
 ```bash
 npm install @intenus/common
 ```
 
-## 🎯 Purpose
+## Purpose
 
-Provides shared types and constants for the entire Intenus ecosystem. This is the **single source of truth** for all type definitions across solver and client implementations.
+This package serves as the single source of truth for all data structures within the Intenus Protocol. By centralizing these core definitions, it ensures consistency and type safety across all client, solver, and backend implementations.
 
-## 📚 Exported Types
+## Core Exports
 
-### Intent Types
+### Type Definitions
+
+The package exports a rich set of types covering the entire protocol lifecycle.
+
+**Example: Core `Intent` Structure**
 ```typescript
-import type { Intent, AssetSpec, Constraints } from '@intenus/common';
+import type { Intent } from '@intenus/common';
 
-const intent: Intent = {
-  intent_id: 'uuid-v4-string',
+const swapIntent: Intent = {
+  intent_id: 'd8f8a8-....',
   user_address: '0x...',
   category: 'swap',
   timestamp: Date.now(),
   action: {
     type: 'swap_exact_in',
-    params: { slippageBps: 50 }
+    params: { slippageBps: 50 } // 0.5%
   },
   assets: {
-    inputs: [{ asset_id: '0x2::sui::SUI', amount: '1000000' }],
+    inputs: [{ asset_id: '0x2::sui::SUI', amount: '1000000' }], // 1 SUI
     outputs: [{ asset_id: '0x...::usdc::USDC' }]
   },
   constraints: {
     max_slippage_bps: 50,
-    deadline_ms: Date.now() + 300_000
+    deadline_ms: Date.now() + 300_000 // 5 minutes
   },
-  execution: {
-    urgency: 'high',
-    privacy_level: 'private'
-  },
-  metadata: {
-    language: 'en',
-    confidence: 1.0
-  }
+  // ... and other properties
 };
 ```
 
-### Batch Types
-```typescript
-import type { Batch, BatchManifest, BatchStatus } from '@intenus/common';
+Other key types include:
+- `Batch` & `BatchManifest`: Structures for grouping and describing batches of intents.
+- `SolutionSubmission` & `RankedPTB`: Data formats for solvers to submit solutions.
+- **Walrus AI Types**: A complete set of types for AI/ML data infrastructure on Walrus, including `BatchArchive`, `UserHistoryAggregated`, `TrainingDatasetMetadata`, and `ModelMetadata`.
 
-const batch: Batch = {
-  batch_id: 'batch-uuid',
-  epoch: 123,
-  status: BatchStatus.OPEN,
-  created_at: Date.now(),
-  intents: ['intent-id-1', 'intent-id-2'],
-  manifest: {
-    total_intents: 2,
-    categories: ['swap'],
-    privacy_levels: ['public', 'private']
-  }
-};
+### Protocol Constants & Configuration
+
+Provides access to critical protocol parameters and network configurations, configurable via environment variables.
+
+```typescript
+import { PROTOCOL_CONSTANTS, NETWORKS, REDIS_CONFIG } from '@intenus/common';
+
+// Access protocol parameters
+console.log(`Minimum solver stake: ${PROTOCOL_CONSTANTS.MIN_SOLVER_STAKE}`);
+
+// Access network endpoints
+console.log(`Sui Testnet RPC: ${NETWORKS.TESTNET.sui}`);
+console.log(`Walrus Testnet Publisher: ${NETWORKS.TESTNET.walrus.publisher}`);
+
+// Access Redis configuration
+console.log(`Redis URL: ${REDIS_CONFIG.url}`);
 ```
 
-### Solution Types
+### Environment Utilities
+
+A set of safe utility functions for accessing environment variables in both Node.js and browser contexts.
+
 ```typescript
-import type { SolutionSubmission, RankedPTB, SolutionOutcome } from '@intenus/common';
+import { getEnv, getRequiredEnv, getEnvNumber } from '@intenus/common';
 
-const solution: SolutionSubmission = {
-  solution_id: 'solution-uuid',
-  batch_id: 'batch-uuid',
-  solver_address: '0xsolver...',
-  outcomes: [
-    {
-      intent_id: 'intent-uuid',
-      status: 'fulfilled',
-      execution_price: '0.95',
-      gas_estimate: '1000000'
-    }
-  ],
-  ptb_bytes: 'base64-encoded-transaction',
-  created_at: Date.now()
-};
+// Get an optional variable with a fallback
+const redisUrl = getEnv('REDIS_URL', 'redis://localhost:6379');
 
-const rankedPTB: RankedPTB = {
-  ptb_bytes: 'base64-encoded-transaction',
-  rank: 1,
-  solver_address: '0xsolver...',
-  estimated_gas: '1000000',
-  execution_score: 0.95
-};
+// Get a required variable, which throws if not set
+const suiRpcUrl = getRequiredEnv('SUI_RPC_URL');
+
+// Get a variable as a number
+const batchSize = getEnvNumber('MAX_BATCH_SIZE', 100);
 ```
 
-### Protocol Constants
+## Usage
+
+This package is intended to be used as a dependency in any project interacting with the Intenus Protocol.
+
+### Solver Application
 ```typescript
-import { PROTOCOL_CONSTANTS, NETWORKS } from '@intenus/common';
-
-// Protocol configuration
-console.log(PROTOCOL_CONSTANTS.MIN_SOLVER_STAKE); // '1000000000000'
-console.log(PROTOCOL_CONSTANTS.BATCH_TIMEOUT_MS); // 30000
-console.log(PROTOCOL_CONSTANTS.MAX_INTENTS_PER_BATCH); // 100
-
-// Network endpoints
-console.log(NETWORKS.TESTNET.sui); // 'https://fullnode.testnet.sui.io'
-console.log(NETWORKS.TESTNET.walrus); // 'https://walrus-testnet.mystenlabs.com'
-console.log(NETWORKS.MAINNET.sui); // 'https://fullnode.mainnet.sui.io'
-```
-
-### Walrus Storage Path Types
-```typescript
-import type { WalrusPath } from '@intenus/common';
-
-// Type-safe path construction
-const intentPath: WalrusPath['intents'] = `/intents/123/intent-${intentId}.json`;
-const batchPath: WalrusPath['batches'] = `/batches/123/manifest.json`;
-const solutionPath: WalrusPath['solutions'] = `/solutions/123/solution-${solutionId}.json`;
-```
-
-## 🔧 Usage Patterns
-
-### In Solver Applications
-```typescript
-import type { 
-  Batch, 
-  Intent, 
-  SolutionSubmission, 
-  SolutionOutcome 
-} from '@intenus/common';
-import { PROTOCOL_CONSTANTS } from '@intenus/common';
+import type { Batch, SolutionSubmission, SolutionOutcome } from '@intenus/common';
 
 class MySolver {
-  async processBatch(batch: Batch): Promise<SolutionSubmission> {
+  processBatch(batch: Batch): SolutionSubmission {
+    // Implement solver logic with guaranteed type safety
     const outcomes: SolutionOutcome[] = [];
-    
-    for (const intentId of batch.intents) {
-      const intent = await this.fetchIntent(intentId);
-      const outcome = await this.solveIntent(intent);
-      outcomes.push(outcome);
-    }
-    
-    return {
-      solution_id: crypto.randomUUID(),
-      batch_id: batch.batch_id,
-      solver_address: this.address,
-      outcomes,
-      ptb_bytes: await this.buildPTB(outcomes),
-      created_at: Date.now()
-    };
+    // ...
+    return { /* ... solution submission object ... */ };
   }
 }
 ```
 
-### In Client Applications  
+### Client Application
 ```typescript
-import type { Intent, RankedPTB } from '@intenus/common';
-import { NETWORKS } from '@intenus/common';
+import type { Intent } from '@intenus/common';
 
 class MyClient {
-  async createSwapIntent(
-    tokenIn: string, 
-    amountIn: string, 
-    tokenOut: string
-  ): Promise<Intent> {
-    return {
-      intent_id: crypto.randomUUID(),
-      user_address: this.userAddress,
-      timestamp: Date.now(),
-      category: 'swap',
-      action: {
-        type: 'swap_exact_in',
-        params: { slippageBps: 50 }
-      },
-      assets: {
-        inputs: [{ asset_id: tokenIn, amount: amountIn }],
-        outputs: [{ asset_id: tokenOut }]
-      },
-      constraints: {
-        max_slippage_bps: 50,
-        deadline_ms: Date.now() + 300_000
-      },
-      execution: {
-        urgency: 'normal',
-        privacy_level: 'public'
-      },
-      metadata: {
-        language: 'en',
-        confidence: 1.0
-      }
-    };
+  createSwapIntent(/* ... */): Intent {
+    // Construct a type-safe intent object
+    return { /* ... intent object ... */ };
   }
 }
 ```
 
-## ✅ What this package provides
+## Package Philosophy
 
-- ✅ Complete TypeScript type definitions
-- ✅ Protocol constants and configuration
-- ✅ Enum definitions for all categories
-- ✅ Type-safe Walrus storage paths
-- ✅ Comprehensive JSDoc documentation
-- ✅ Zero runtime dependencies
+- **What it provides**:
+  - A complete set of TypeScript type definitions for the Intenus Protocol.
+  - Centralized protocol constants and network configurations.
+  - Type-safe utilities for environment variables and Walrus storage paths.
+  - Comprehensive JSDoc annotations for all types and constants.
 
-## ❌ What this package does NOT provide
+- **What it does NOT provide**:
+  - Runtime implementations or business logic.
+  - Abstractions over other SDKs.
+  - Network communication or external service integrations.
 
-- ❌ Runtime implementations or business logic
-- ❌ SDK wrappers or abstractions
-- ❌ Network communication utilities
-- ❌ External service integrations
+By adhering to this philosophy, `@intenus/common` remains a lightweight, portable, and essential foundation for the ecosystem.
 
-## 🏗️ Type Safety Benefits
+## Related Packages
 
-Using `@intenus/common` ensures:
-
-1. **Compile-time validation** - Catch type errors before runtime
-2. **IntelliSense support** - Full autocomplete in your IDE
-3. **Refactoring safety** - Changes propagate across your codebase
-4. **Documentation** - Types serve as living documentation
-5. **Version compatibility** - Ensure all packages use consistent types
-
-## 🔗 Related Packages
-
-- [`@intenus/solver-sdk`](../solver-sdk) - Optional solver development utilities
-- [`@intenus/client-sdk`](../client-sdk) - Optional client application helpers
-
-## 📄 License
-
-MIT License - see [LICENSE](../../LICENSE) for details.
+- [`@intenus/solver-sdk`](../solver-sdk): Optional utilities for solver development.
+- [`@intenus/client-sdk`](../client-sdk): Optional helpers for building client applications.
+- [`@intenus/walrus`](../walrus): A structured storage client for Walrus.

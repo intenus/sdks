@@ -1,227 +1,191 @@
-# Intenus TypeScript SDKs
+# Intenus TypeScript SDK
 
-Minimal TypeScript SDKs for the Intenus Protocol. Provides types, utilities, and **optional** helpers for solvers and clients.
+Official TypeScript SDK for the Intenus Protocol. It provides a comprehensive set of types, utilities, and optional helpers for building applications and services on the Intenus network.
 
-## 🎯 Design Principles
+## Overview
 
-- **Composition over Abstraction**: Direct integration with Walrus, Seal, and Sui SDKs
-- **Type-first Architecture**: Focus on type safety and developer experience
-- **Zero Vendor Lock-in**: Solvers can bypass SDK helpers when needed
-- **Tree-shakeable**: Import only what you need
+The Intenus TypeScript SDK is designed to streamline development for both clients and solvers. It offers a type-safe, modular, and flexible architecture that integrates directly with the Sui, Walrus, and Seal SDKs.
 
-## 📦 Packages
+### Core Principles
 
-### [@intenus/common](./packages/common)
+- **Modular Architecture**: A clear separation of concerns between shared types, client utilities, solver tools, and storage management.
+- **Type Safety**: Strongly typed to ensure a robust and predictable development experience.
+- **Flexibility**: Provides optional, high-level abstractions without preventing direct access to the underlying Sui, Walrus, and Seal SDKs.
+- **Performance**: Optimized for tree-shaking to ensure minimal bundle sizes in production applications.
 
-**Pure TypeScript types** - Zero runtime dependencies
+## Packages
 
-- `Intent`, `Batch`, `Solution` type definitions
-- Protocol constants and configuration
-- Walrus storage path types
+This monorepo contains the following public packages:
 
-### [@intenus/solver-sdk](./packages/solver-sdk)
+| Package | Version | Description |
+|---|---|---|
+| [`@intenus/common`](./packages/common) | [![npm version](https://badge.fury.io/js/@intenus%2Fcommon.svg)](https://badge.fury.io/js/@intenus%2Fcommon) | Shared types, constants, and utilities. Zero runtime dependencies. |
+| [`@intenus/client-sdk`](./packages/client-sdk) | [![npm version](https://badge.fury.io/js/@intenus%2Fclient-sdk.svg)](https://badge.fury.io/js/@intenus%2Fclient-sdk) | Optional helpers for building client-side applications. |
+| [`@intenus/solver-sdk`](./packages/solver-sdk) | [![npm version](https://badge.fury.io/js/@intenus%2Fsolver-sdk.svg)](https://badge.fury.io/js/@intenus%2Fsolver-sdk) | Optional utilities for solver development. |
+| [`@intenus/walrus`](./packages/walrus) | [![npm version](https://badge.fury.io/js/@intenus%2Fwalrus.svg)](https://badge.fury.io/js/@intenus%2Fwalrus) | Structured storage services for Walrus, aligned with AI infrastructure standards. |
 
-**Optional utilities** for solver developers
-
-- `SolverListener` - Redis subscription management
-- `SolutionBuilder` - Transaction composition utilities  
-- `P2PMatcher` - Reference matching implementation
-
-### [@intenus/client-sdk](./packages/client-sdk)
-
-**Optional utilities** for client applications
-
-- `IntentBuilder` - Fluent intent construction API
-- `PTBExecutor` - Transaction signing and submission utilities
-
-### [@intenus/walrus](./packages/walrus)
-
-**Walrus storage wrapper** with AI infrastructure standards
-
-- `IntenusWalrusClient` - Structured storage services (batches, archives, users, training)
-- `StoragePathBuilder` - Type-safe path construction
-- SOLID principles with Strategy, Builder, and Facade patterns
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
-For solver development:
+Install the desired packages for your use case.
 
+**For Solver Development:**
 ```bash
 npm install @intenus/solver-sdk @mysten/sui @mysten/walrus @mysten/seal ioredis
 ```
 
-For client applications:
-
+**For Client Applications:**
 ```bash
 npm install @intenus/client-sdk @mysten/sui @mysten/walrus @mysten/seal
 ```
 
-For Walrus storage:
-
+**For Walrus Storage Only:**
 ```bash
 npm install @intenus/walrus @mysten/walrus @mysten/sui
 ```
 
-For type definitions only:
-
+**For Type Definitions Only:**
 ```bash
 npm install @intenus/common
 ```
 
-### Solver Implementation (with SDK utilities)
+## Usage Examples
+
+### Solver Implementation
+
+This example demonstrates a basic solver using `SolverListener` to subscribe to new batches and `SolutionBuilder` to construct a response.
 
 ```typescript
 import { SolverListener, SolutionBuilder } from '@intenus/solver-sdk';
-import { WalrusClient } from '@mysten/walrus';
+import { IntenusWalrusClient } from '@intenus/walrus';
 import { SuiClient } from '@mysten/sui/client';
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
-const listener = new SolverListener('redis://localhost:6379');
-const walrus = new WalrusClient({ url: 'https://walrus-testnet.mystenlabs.com' });
-const sui = new SuiClient({ url: 'https://fullnode.testnet.sui.io' });
+// 1. Initialize Clients
+const suiClient = new SuiClient({ url: 'https://fullnode.testnet.sui.io' });
+const walrusClient = new IntenusWalrusClient({ network: 'testnet' });
+const listener = new SolverListener('redis://localhost:6379', walrusClient);
+const signer = new Ed25519Keypair(); // Your solver's keypair
 
-listener.onNewBatch(async (batch) => {
-  const builder = new SolutionBuilder(batch.batch_id, '0xsolver_address');
-  
-  // Implement your solving logic
-  for (const intent of batch.intents) {
-    // Add solution outcomes
-    builder.addOutcome(intent.intent_id, { /* solution data */ });
+// 2. Subscribe to New Batches
+listener.onNewBatch(async (batch, manifest) => {
+  if (!manifest) {
+    console.error(`Manifest for epoch ${batch.epoch} not found.`);
+    return;
   }
   
-  const solution = await builder.build();
+  console.log(`Received batch for epoch ${batch.epoch} with ${manifest.intents.length} intents.`);
+  
+  // 3. Implement Solving Logic
+  const solutionBuilder = new SolutionBuilder(batch.batch_id, signer.getPublicKey().toSuiAddress());
+  
+  // Your custom logic to find optimal solutions for intents in the manifest
+  // For example, finding P2P matches or routing through DEXs
+  
+  // 4. Build and Submit Solution
+  const solution = await solutionBuilder.build({ client: suiClient });
   await listener.submitSolution(solution);
-});
-
-await listener.start();
-```
-
-### Solver Implementation (direct SDK usage)
-
-```typescript
-import Redis from 'ioredis';
-import { WalrusClient } from '@mysten/walrus';
-import { SuiClient } from '@mysten/sui/client';
-import type { Batch, SolutionSubmission } from '@intenus/common';
-
-const redis = new Redis('redis://localhost:6379');
-const walrus = new WalrusClient({ url: 'https://walrus-testnet.mystenlabs.com' });
-const sui = new SuiClient({ url: 'https://fullnode.testnet.sui.io' });
-
-// Full control - implement custom solving logic
-redis.subscribe('intenus:batches');
-redis.on('message', async (channel, message) => {
-  const batch: Batch = JSON.parse(message);
-  // Custom implementation
+  console.log(`Submitted solution for batch ${batch.batch_id}`);
 });
 ```
 
 ### Client Application
 
+This example shows how to use `IntentBuilder` to create an intent and `PTBExecutor` to sign and execute a transaction.
+
 ```typescript
 import { IntentBuilder, PTBExecutor } from '@intenus/client-sdk';
 import { SuiClient } from '@mysten/sui/client';
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
-const client = new SuiClient({ url: 'https://fullnode.testnet.sui.io' });
+// 1. Initialize Client and Executor
+const suiClient = new SuiClient({ url: 'https://fullnode.testnet.sui.io' });
+const executor = new PTBExecutor(suiClient);
+const userAddress = '0x...'; // User's Sui address
+const keypair = new Ed25519Keypair(); // User's keypair for signing
 
-// Build intent with fluent API
-const intent = new IntentBuilder('0xclient_address')
+// 2. Build an Intent
+const intent = new IntentBuilder(userAddress)
   .swap('0x2::sui::SUI', '1000000', '0x...::usdc::USDC')
-  .private(true)
-  .urgency('high')
+  .constraints({ maxSlippageBps: 50 }) // 0.5% slippage
   .build();
 
-// Execute ranked transaction
-const executor = new PTBExecutor(client);
-const result = await executor.execute(rankedPTB, wallet);
+// 3. Submit Intent to the protocol (via your backend)
+// ...
+
+// 4. Execute a Ranked Programmable Transaction Block (PTB)
+// (Assuming you received a rankedPTB from the Intenus network)
+const rankedPTB = { /* ... received from Intenus ... */ };
+const result = await executor.execute(rankedPTB, keypair);
+
+console.log('Execution successful, digest:', result.digest);
 ```
 
-## 📚 Examples
+### Walrus Storage with Quilt Optimization
 
-### Walrus Storage
+This example demonstrates storing multiple intents efficiently using Walrus Quilt.
 
 ```typescript
 import { IntenusWalrusClient } from '@intenus/walrus';
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
-const client = new IntenusWalrusClient({
-  network: 'testnet',
-});
+const client = new IntenusWalrusClient({ network: 'testnet' });
+const signer = new Ed25519Keypair();
 
-// Store batch manifest
-const manifest = {
-  batch_id: 'batch_12345',
-  epoch: 1000,
-  intent_count: 100,
-  intents: [/* ... */],
-  categories: { swap: 80, lending: 20 },
-  estimated_value_usd: 50000,
-  solver_deadline: Date.now() + 5000,
-  created_at: Date.now(),
-  requirements: {
-    min_tee_verification: true,
-    min_stake_required: '1000000000000',
-    max_solutions_per_solver: 1,
-  },
-};
+// A batch of intents to be stored
+const intents = [
+  { intent_id: 'intent_1', data: { /* ... */ }, category: 'swap' },
+  { intent_id: 'intent_2', data: { /* ... */ }, category: 'lend' },
+];
 
-const result = await client.batches.storeManifest(manifest, signer);
-console.log('Stored:', result.blob_id);
+// 1. Analyze if Quilt is beneficial
+const analysis = client.batches.calculateQuiltBenefit(intents.length, 512); // Assuming avg 512 bytes per intent
+if (analysis.recommended) {
+  console.log(`Quilt is recommended. Estimated savings: ${analysis.estimatedSavings?.toFixed(2)}%`);
 
-// Fetch batch manifest
-const fetchedManifest = await client.batches.fetchManifest(1000);
+  // 2. Store intents as a Quilt for cost efficiency
+  const quiltResult = await client.batches.storeIntentsQuilt(intents, 'batch_abc', signer);
+  console.log('Stored intents in quilt with Blob ID:', quiltResult.blobId);
+
+  // 3. Fetch an individual intent from the Quilt
+  const firstIntentPatchId = quiltResult.patches[0].patchId;
+  const fetchedIntent = await client.batches.fetchIntentFromQuilt(firstIntentPatchId);
+  console.log('Fetched individual intent:', fetchedIntent);
+}
 ```
 
-### Additional Examples
+## Development
 
-- [Basic Solver](./examples/solver-basic) - Getting started with solver development
-- [Advanced Solver](./examples/solver-advanced) - Custom implementation patterns  
-- [Client Application](./examples/client-basic) - Intent creation and execution
+### Prerequisites
+- Node.js (v18 or later)
+- pnpm
 
-## 🔧 Development
-
+### Setup
 ```bash
+# Clone the repository
+git clone https://github.com/intenus/sdks.git
+cd sdks
+
 # Install dependencies
 pnpm install
+```
 
+### Common Commands
+```bash
 # Build all packages
 pnpm build
 
-# Run test suite
+# Run all tests
 pnpm test
 
-# Type checking
+# Run type checking across the monorepo
 pnpm typecheck
 
-# Code linting
+# Lint all packages
 pnpm lint
 ```
 
-## 📖 Documentation
+## License
 
-Each package includes comprehensive API documentation:
-
-- [Common Types](./packages/common/README.md) - Type definitions and constants
-- [Solver SDK](./packages/solver-sdk/README.md) - Solver development utilities
-- [Client SDK](./packages/client-sdk/README.md) - Client application helpers
-
-## 🏗️ Architecture
-
-The Intenus SDKs follow a modular architecture:
-
-1. **@intenus/common** - Shared type definitions (zero dependencies)
-2. **@intenus/solver-sdk** - Optional solver utilities (depends on common)
-3. **@intenus/client-sdk** - Optional client utilities (depends on common)
-
-This design ensures maximum flexibility while providing helpful abstractions when needed.
-
-## ⚠️ Important Notes
-
-1. **SDK utilities are optional** - Use underlying Walrus, Seal, and Sui SDKs directly when needed
-2. **No SDK wrapping** - Direct integration with existing Mysten Labs SDKs
-3. **Type-first approach** - Comprehensive TypeScript support throughout
-4. **Production ready** - Battle-tested in live trading environments
-
-## 📄 License
-
-MIT License - see [LICENSE](./LICENSE) for details.
+This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
