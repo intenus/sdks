@@ -1,127 +1,173 @@
 # Intenus TypeScript SDKs
 
-Minimal TypeScript SDKs cho Intenus Protocol. Cung cấp types, utilities, và **OPTIONAL** helpers cho solvers và clients.
+Minimal TypeScript SDKs for the Intenus Protocol. Provides types, utilities, and **optional** helpers for solvers and clients.
 
-## 🎯 Thiết kế nguyên tắc
+## 🎯 Design Principles
 
-- **Composition over Abstraction**: Không wrap Walrus, Seal, Sui SDKs
-- **Export types, not implementations**: Tập trung vào type safety
-- **Zero lock-in**: Solvers có thể bypass SDK nếu muốn
-- **Tree-shakeable**: Import chỉ những gì cần thiết
+- **Composition over Abstraction**: Direct integration with Walrus, Seal, and Sui SDKs
+- **Type-first Architecture**: Focus on type safety and developer experience
+- **Zero Vendor Lock-in**: Solvers can bypass SDK helpers when needed
+- **Tree-shakeable**: Import only what you need
 
 ## 📦 Packages
 
 ### [@intenus/common](./packages/common)
-**Pure TypeScript types** - KHÔNG có runtime dependencies
-- `Intent`, `Batch`, `Solution` types
-- Protocol constants
-- Walrus path types
+**Pure TypeScript types** - Zero runtime dependencies
+- `Intent`, `Batch`, `Solution` type definitions
+- Protocol constants and configuration
+- Walrus storage path types
 
 ### [@intenus/solver-sdk](./packages/solver-sdk) 
-**OPTIONAL helpers** cho solver developers
-- `SolverListener` - Redis subscription helper
-- `SolutionBuilder` - PTB composition helper  
-- `P2PMatcher` - Reference implementation
+**Optional utilities** for solver developers
+- `SolverListener` - Redis subscription management
+- `SolutionBuilder` - Transaction composition utilities  
+- `P2PMatcher` - Reference matching implementation
 
 ### [@intenus/client-sdk](./packages/client-sdk)
-**OPTIONAL helpers** cho client developers
-- `IntentBuilder` - Fluent API
-- `PTBExecutor` - Signature + submission helper
+**Optional utilities** for client applications
+- `IntentBuilder` - Fluent intent construction API
+- `PTBExecutor` - Transaction signing and submission utilities
 
 ## 🚀 Quick Start
 
 ### Installation
 
+For solver development:
 ```bash
-pnpm install
-pnpm build
+npm install @intenus/solver-sdk @mysten/sui @mysten/walrus @mysten/seal ioredis
 ```
 
-### Solver Example (với SDK helpers)
+For client applications:
+```bash
+npm install @intenus/client-sdk @mysten/sui @mysten/walrus @mysten/seal
+```
+
+For type definitions only:
+```bash
+npm install @intenus/common
+```
+
+### Solver Implementation (with SDK utilities)
 
 ```typescript
 import { SolverListener, SolutionBuilder } from '@intenus/solver-sdk';
-import { WalrusClient } from '@walrus/sdk';
-import { SuiClient } from '@mysten/sui.js/client';
+import { WalrusClient } from '@mysten/walrus';
+import { SuiClient } from '@mysten/sui/client';
 
-const listener = new SolverListener('redis://localhost');
-const walrus = new WalrusClient({ url: '...' });
-const sui = new SuiClient({ url: '...' });
+const listener = new SolverListener('redis://localhost:6379');
+const walrus = new WalrusClient({ url: 'https://walrus-testnet.mystenlabs.com' });
+const sui = new SuiClient({ url: 'https://fullnode.testnet.sui.io' });
 
 listener.onNewBatch(async (batch) => {
-  const builder = new SolutionBuilder(batch.batch_id, '0x...');
-  // Build solution...
+  const builder = new SolutionBuilder(batch.batch_id, '0xsolver_address');
+  
+  // Implement your solving logic
+  for (const intent of batch.intents) {
+    // Add solution outcomes
+    builder.addOutcome(intent.intent_id, { /* solution data */ });
+  }
+  
+  const solution = await builder.build();
   await listener.submitSolution(solution);
 });
+
+await listener.start();
 ```
 
-### Solver Example (KHÔNG dùng SDK helpers)
+### Solver Implementation (direct SDK usage)
 
 ```typescript
 import Redis from 'ioredis';
-import { WalrusClient } from '@walrus/sdk';
-import { SuiClient } from '@mysten/sui.js/client';
+import { WalrusClient } from '@mysten/walrus';
+import { SuiClient } from '@mysten/sui/client';
 import type { Batch, SolutionSubmission } from '@intenus/common';
 
-const redis = new Redis('redis://localhost');
-const walrus = new WalrusClient({ url: '...' });
-const sui = new SuiClient({ url: '...' });
+const redis = new Redis('redis://localhost:6379');
+const walrus = new WalrusClient({ url: 'https://walrus-testnet.mystenlabs.com' });
+const sui = new SuiClient({ url: 'https://fullnode.testnet.sui.io' });
 
-// Full control - implement everything yourself
+// Full control - implement custom solving logic
+redis.subscribe('intenus:batches');
+redis.on('message', async (channel, message) => {
+  const batch: Batch = JSON.parse(message);
+  // Custom implementation
+});
 ```
 
-### Client Example
+### Client Application
 
 ```typescript
 import { IntentBuilder, PTBExecutor } from '@intenus/client-sdk';
-import { SuiClient } from '@mysten/sui.js/client';
+import { SuiClient } from '@mysten/sui/client';
 
-const intent = new IntentBuilder('0x...')
+const client = new SuiClient({ url: 'https://fullnode.testnet.sui.io' });
+
+// Build intent with fluent API
+const intent = new IntentBuilder('0xclient_address')
   .swap('0x2::sui::SUI', '1000000', '0x...::usdc::USDC')
   .private(true)
+  .urgency('high')
   .build();
 
-const executor = new PTBExecutor(new SuiClient({ url: '...' }));
-await executor.execute(rankedPTB, wallet);
+// Execute ranked transaction
+const executor = new PTBExecutor(client);
+const result = await executor.execute(rankedPTB, wallet);
 ```
 
 ## 📚 Examples
 
-- [Basic Solver](./examples/solver-basic) - Sử dụng SDK helpers
-- [Advanced Solver](./examples/solver-advanced) - Direct SDK usage  
-- [Basic Client](./examples/client-basic) - Client implementation
+- [Basic Solver](./examples/solver-basic) - Getting started with solver development
+- [Advanced Solver](./examples/solver-advanced) - Custom implementation patterns  
+- [Client Application](./examples/client-basic) - Intent creation and execution
 
 ## 🔧 Development
 
 ```bash
+# Install dependencies
+pnpm install
+
 # Build all packages
 pnpm build
 
-# Run tests
+# Run test suite
 pnpm test
 
 # Type checking
 pnpm typecheck
 
-# Linting
+# Code linting
 pnpm lint
 ```
 
 ## 📖 Documentation
 
-Mỗi package có README riêng với API documentation chi tiết:
+Each package includes comprehensive API documentation:
 
-- [Common Types](./packages/common/README.md)
-- [Solver SDK](./packages/solver-sdk/README.md)  
-- [Client SDK](./packages/client-sdk/README.md)
+- [Common Types](./packages/common/README.md) - Type definitions and constants
+- [Solver SDK](./packages/solver-sdk/README.md) - Solver development utilities
+- [Client SDK](./packages/client-sdk/README.md) - Client application helpers
+
+## 🏗️ Architecture
+
+The Intenus SDKs follow a modular architecture:
+
+1. **@intenus/common** - Shared type definitions (zero dependencies)
+2. **@intenus/solver-sdk** - Optional solver utilities (depends on common)
+3. **@intenus/client-sdk** - Optional client utilities (depends on common)
+
+This design ensures maximum flexibility while providing helpful abstractions when needed.
 
 ## ⚠️ Important Notes
 
-1. **SDK helpers là OPTIONAL** - Solvers/clients có thể dùng underlying SDKs trực tiếp
-2. **Không wrap existing SDKs** - Sử dụng Walrus, Seal, Sui SDKs trực tiếp
-3. **Types-first approach** - @intenus/common chỉ export types, không có implementations
-4. **Maximum flexibility** - Solvers có full control over implementation
+1. **SDK utilities are optional** - Use underlying Walrus, Seal, and Sui SDKs directly when needed
+2. **No SDK wrapping** - Direct integration with existing Mysten Labs SDKs
+3. **Type-first approach** - Comprehensive TypeScript support throughout
+4. **Production ready** - Battle-tested in live trading environments
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details.
 
 ## 📄 License
 
-MIT
+MIT License - see [LICENSE](./LICENSE) for details.
