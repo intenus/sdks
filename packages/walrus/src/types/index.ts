@@ -32,6 +32,30 @@ export interface StorageResult {
   epochs: number;
 }
 
+// ===== QUILT TYPES =====
+
+export interface QuiltBlob {
+  contents: Uint8Array;
+  identifier: string;
+  tags?: Record<string, string>;
+}
+
+export interface QuiltPatch {
+  patchId: string;
+  identifier: string;
+  tags: Record<string, string>;
+  startIndex: number;
+  endIndex: number;
+}
+
+export interface QuiltResult {
+  blobId: string;
+  patches: QuiltPatch[];
+  size_bytes: number;
+  created_at: number;
+  epochs: number;
+}
+
 // ===== ERROR TYPES =====
 
 export class WalrusStorageError extends Error {

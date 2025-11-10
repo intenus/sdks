@@ -5,8 +5,9 @@
 import type { Signer } from '@mysten/sui/cryptography';
 import { BaseStorageService } from './base.js';
 import { StoragePathBuilder } from '../utils/paths.js';
+import { batchIntentsToQuilt } from '../utils/quilt.js';
 import { DEFAULT_EPOCHS } from '../constants/index.js';
-import type { BatchManifest, StorageResult } from '../types/index.js';
+import type { BatchManifest, StorageResult, QuiltResult } from '../types/index.js';
 
 export class BatchStorageService extends BaseStorageService<BatchManifest> {
   protected getPath(epoch: number): string {
@@ -31,5 +32,41 @@ export class BatchStorageService extends BaseStorageService<BatchManifest> {
   
   async manifestExists(epoch: number): Promise<boolean> {
     return this.exists(epoch);
+  }
+  
+  // ===== QUILT METHODS (BATCH OPTIMIZATION) =====
+  
+  /**
+   * Store batch intents efficiently using Quilt
+   * Ideal when batch contains many small intents
+   */
+  async storeIntentsQuilt(
+    intents: Array<{ intent_id: string; data: any; category?: string }>,
+    batchId: string,
+    signer: Signer,
+    epochs: number = DEFAULT_EPOCHS.BATCH_MANIFEST
+  ): Promise<QuiltResult> {
+    const quiltBlobs = batchIntentsToQuilt(intents, batchId);
+    return this.client.storeQuilt(quiltBlobs, epochs, signer);
+  }
+  
+  /**
+   * Fetch individual intent from quilt by patch ID
+   */
+  async fetchIntentFromQuilt(patchId: string): Promise<any> {
+    const buffer = await this.client.fetchFromQuilt(patchId);
+    return JSON.parse(buffer.toString());
+  }
+  
+  /**
+   * Calculate if Quilt is beneficial for this batch
+   */
+  calculateQuiltBenefit(intentCount: number, averageIntentSize: number): {
+    recommended: boolean;
+    reason: string;
+    estimatedSavings?: number;
+  } {
+    const { shouldUseQuilt } = require('../utils/quilt.js');
+    return shouldUseQuilt(intentCount, averageIntentSize);
   }
 }

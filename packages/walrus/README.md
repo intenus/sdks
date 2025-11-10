@@ -12,6 +12,120 @@ npm install @intenus/walrus @mysten/walrus @mysten/sui
 
 Provides **structured storage services** for Intenus Protocol data on Walrus. Implements SOLID principles with design patterns (Strategy, Builder, Facade) for production-ready AI infrastructure.
 
+## 🆕 Quilt Features (Batch Optimization)
+
+Intenus Walrus SDK leverages **Quilt** for efficient batch storage, reducing costs for multiple small blobs.
+
+### When to Use Quilt
+
+✅ **Use Quilt when:**
+- Storing many small blobs (<10MB each)
+- Batch contains 2-666 blobs
+- Cost optimization is important
+- Individual blob access is still needed
+
+❌ **Don't use Quilt when:**
+- Single blob storage
+- Large blobs (>10MB)
+- More than 666 blobs per batch
+
+### Batch Intent Storage
+
+```typescript
+import { IntenusWalrusClient, batchIntentsToQuilt } from '@intenus/walrus';
+
+const client = new IntenusWalrusClient({ network: 'testnet' });
+
+// Prepare intents for batching
+const intents = [
+  { intent_id: 'intent1', data: { action: 'swap', amount: '1000' }, category: 'defi' },
+  { intent_id: 'intent2', data: { action: 'lend', amount: '500' }, category: 'lending' },
+  // ... up to 666 intents
+];
+
+// Check if Quilt is beneficial
+const analysis = client.batches.calculateQuiltBenefit(
+  intents.length, 
+  JSON.stringify(intents[0]).length
+);
+
+if (analysis.recommended) {
+  console.log(`Quilt recommended: ${analysis.reason}`);
+  console.log(`Estimated savings: ${analysis.estimatedSavings}%`);
+  
+  // Store using Quilt
+  const result = await client.batches.storeIntentsQuilt(
+    intents,
+    'batch_123',
+    signer
+  );
+  
+  console.log('Quilt stored:', result.blobId);
+  console.log('Individual patches:', result.patches.length);
+  
+  // Fetch individual intent by patch ID
+  const intent = await client.batches.fetchIntentFromQuilt(
+    result.patches[0].patchId
+  );
+}
+```
+
+### Training Data Batching
+
+```typescript
+// Prepare training data points
+const dataPoints = [
+  { id: 'data1', features: [1, 2, 3], labels: [0, 1] },
+  { id: 'data2', features: [4, 5, 6], labels: [1, 0] },
+  // ... many data points
+];
+
+// Calculate optimal batching strategy
+const strategy = client.training.calculateTrainingDataBatching(
+  dataPoints.length,
+  JSON.stringify(dataPoints[0]).length
+);
+
+console.log('Batching strategy:', strategy);
+// {
+//   recommended: true,
+//   batchCount: 1,
+//   pointsPerBatch: 100,
+//   estimatedSavings: 85.2
+// }
+
+if (strategy.recommended) {
+  // Store training data using Quilt
+  const result = await client.training.storeTrainingDataQuilt(
+    dataPoints,
+    'dataset_v1.0.0',
+    signer
+  );
+  
+  // Fetch individual data point
+  const dataPoint = await client.training.fetchTrainingDataFromQuilt(
+    result.patches[0].patchId
+  );
+}
+```
+
+### Cost Optimization
+
+```typescript
+import { calculateQuiltSavings } from '@intenus/walrus';
+
+// Compare costs
+const savings = calculateQuiltSavings(100, 2048); // 100 blobs, 2KB each
+
+console.log('Individual storage cost:', savings.individualCost);
+console.log('Quilt storage cost:', savings.quiltCost);
+console.log('Savings:', savings.savings, `(${savings.savingsPercent}%)`);
+
+// Optimal batch size calculation
+const optimalSize = client.calculateOptimalBatchSize(2048); // 2KB average
+console.log('Recommended blobs per quilt:', optimalSize);
+```
+
 ## 🚀 Quick Start
 
 ### Basic Usage

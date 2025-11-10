@@ -5,6 +5,29 @@
 // Main client
 export { IntenusWalrusClient } from './client.js';
 
+// Export types
+export type {
+  IntenusWalrusConfig,
+  StorageResult,
+  QuiltBlob,
+  QuiltPatch,
+  QuiltResult,
+  WalrusStorageError,
+  WalrusFetchError
+} from './types/index.js';
+
+// Export utilities
+export {
+  createQuiltBlob,
+  createQuiltBlobFromBuffer,
+  batchIntentsToQuilt,
+  batchSolutionsToQuilt,
+  batchTrainingDataToQuilt,
+  calculateQuiltSavings,
+  shouldUseQuilt,
+  parsePatchIdentifier
+} from './utils/quilt.js';
+
 // Types
 export type * from './types/index.js';
 

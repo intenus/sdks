@@ -4,9 +4,10 @@
 
 import type { Signer } from '@mysten/sui/cryptography';
 import { StoragePathBuilder } from '../utils/paths.js';
+import { batchTrainingDataToQuilt } from '../utils/quilt.js';
 import { DEFAULT_EPOCHS, SCHEMA_VERSIONS } from '../constants/index.js';
 import type { IntenusWalrusClient } from '../client.js';
-import type { TrainingDatasetMetadata, ModelMetadata, StorageResult } from '../types/index.js';
+import type { TrainingDatasetMetadata, ModelMetadata, StorageResult, QuiltResult } from '../types/index.js';
 
 export class TrainingStorageService {
   constructor(private client: IntenusWalrusClient) {}
@@ -129,5 +130,70 @@ export class TrainingStorageService {
   async modelExists(name: string, version: string): Promise<boolean> {
     const metadataPath = StoragePathBuilder.build('modelMetadata', name, version);
     return this.client.exists(metadataPath);
+  }
+  
+  // ===== QUILT METHODS (BATCH OPTIMIZATION) =====
+  
+  /**
+   * Store training data points efficiently using Quilt
+   * Ideal for large datasets with many small data points
+   */
+  async storeTrainingDataQuilt(
+    dataPoints: Array<{ id: string; features: any; labels: any }>,
+    datasetVersion: string,
+    signer: Signer,
+    epochs: number = DEFAULT_EPOCHS.TRAINING_DATA
+  ): Promise<QuiltResult> {
+    const quiltBlobs = batchTrainingDataToQuilt(dataPoints, datasetVersion);
+    return this.client.storeQuilt(quiltBlobs, epochs, signer);
+  }
+  
+  /**
+   * Fetch individual training data point from quilt
+   */
+  async fetchTrainingDataFromQuilt(patchId: string): Promise<{
+    features: any;
+    labels: any;
+  }> {
+    const buffer = await this.client.fetchFromQuilt(patchId);
+    return JSON.parse(buffer.toString());
+  }
+  
+  /**
+   * Calculate optimal batching strategy for training data
+   */
+  calculateTrainingDataBatching(
+    totalDataPoints: number,
+    averageDataPointSize: number
+  ): {
+    recommended: boolean;
+    batchCount: number;
+    pointsPerBatch: number;
+    estimatedSavings?: number;
+  } {
+    const { shouldUseQuilt, calculateQuiltSavings } = require('../utils/quilt.js');
+    const MAX_QUILT_SIZE = 666;
+    
+    if (totalDataPoints <= MAX_QUILT_SIZE) {
+      const analysis = shouldUseQuilt(totalDataPoints, averageDataPointSize);
+      return {
+        recommended: analysis.recommended,
+        batchCount: 1,
+        pointsPerBatch: totalDataPoints,
+        estimatedSavings: analysis.estimatedSavings
+      };
+    }
+    
+    // Multiple quilts needed
+    const pointsPerBatch = MAX_QUILT_SIZE;
+    const batchCount = Math.ceil(totalDataPoints / pointsPerBatch);
+    const savings = calculateQuiltSavings(pointsPerBatch, averageDataPointSize);
+    
+    return {
+      recommended: savings.savingsPercent > 20,
+      batchCount,
+      pointsPerBatch,
+      estimatedSavings: savings.savingsPercent
+    };
   }
 }
