@@ -48,12 +48,11 @@ export class WalrusIntentHelper {
   /**
    * Fetches a pending intent from Walrus for verification.
    *
-   * @param intentId The ID of the intent to fetch.
+   * @param blobId The blob ID of the intent to fetch.
    * @returns A promise that resolves to the fetched intent object.
    */
-  async fetchIntent(intentId: string): Promise<Intent> {
-    const path = `/intents/pending/${intentId}.json`;
-    const buffer = await this.walrusClient.fetchRaw(path);
+  async fetchIntent(blobId: string): Promise<Intent> {
+    const buffer = await this.walrusClient.fetchRaw(blobId);
     return JSON.parse(buffer.toString());
   }
   

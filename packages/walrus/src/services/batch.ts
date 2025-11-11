@@ -34,11 +34,10 @@ export class BatchStorageService extends BaseStorageService<BatchManifest> {
     return this.exists(epoch);
   }
   
-  // ===== QUILT METHODS (BATCH OPTIMIZATION) =====
+  // ===== QUILT METHODS =====
   
   /**
    * Store batch intents efficiently using Quilt
-   * Ideal when batch contains many small intents
    */
   async storeIntentsQuilt(
     intents: Array<{ intent_id: string; data: any; category?: string }>,
@@ -47,15 +46,46 @@ export class BatchStorageService extends BaseStorageService<BatchManifest> {
     epochs: number = DEFAULT_EPOCHS.BATCH_MANIFEST
   ): Promise<QuiltResult> {
     const quiltBlobs = batchIntentsToQuilt(intents, batchId);
-    return this.client.storeQuilt(quiltBlobs, epochs, signer);
+    const result = await this.client.storeQuilt(quiltBlobs, epochs, signer);
+    
+    // Cache for future reads
+    this.client.cacheQuiltIndex(result);
+    
+    return result;
   }
   
   /**
-   * Fetch individual intent from quilt by patch ID
+   * Fetch individual intent from quilt
    */
-  async fetchIntentFromQuilt(patchId: string): Promise<any> {
-    const buffer = await this.client.fetchFromQuilt(patchId);
+  async fetchIntentFromQuilt(
+    quiltBlobId: string,
+    intentIdentifier: string
+  ): Promise<any> {
+    const buffer = await this.client.fetchFromQuilt(quiltBlobId, intentIdentifier);
     return JSON.parse(buffer.toString());
+  }
+  
+  /**
+   * Fetch all intents from quilt at once
+   */
+  async fetchAllIntentsFromQuilt(quiltBlobId: string): Promise<Array<{
+    intent_id: string;
+    data: any;
+    category: string;
+  }>> {
+    const { patches } = await this.client.readQuilt(quiltBlobId);
+    
+    return patches.map(patch => {
+      const data = JSON.parse(patch.data.toString());
+      const intentId = patch.tags.intent_id || '';
+      const category = patch.tags.category || 'unknown';
+      
+      return {
+        intent_id: intentId,
+        data,
+        category
+      };
+    });
   }
   
   /**

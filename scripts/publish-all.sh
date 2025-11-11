@@ -1,0 +1,1 @@
+cd /Users/hoangducbach/Projects/intenus/sdks && pnpm -r publish --access public

@@ -47,35 +47,114 @@ const fetchedManifest = await client.batches.fetchManifest(1000);
 
 ## Quilt for Cost Optimization
 
-Walrus Quilt is a feature for batching multiple small blobs into a single storage object, significantly reducing on-chain gas fees and storage costs. The SDK provides helpers to simplify its usage.
+Walrus Quilt batches multiple small blobs into a single storage object, reducing gas fees.
 
-### When to Use Quilt
-- **Recommended**: For storing many small, related blobs (e.g., a batch of intents, individual training data points).
-- **Not Recommended**: For single blobs or very large files (>10MB).
+### Important: Quilt Reading Pattern
 
-### Example: Storing Intents with Quilt
+**Quilt does NOT support direct patch reading.** You must:
+
+1. Store the `QuiltResult` returned from `storeQuilt()`
+2. Use the stored index to extract individual patches
+
+### Example: Correct Quilt Usage
 
 ```typescript
+import { IntenusWalrusClient } from '@intenus/walrus';
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+
+const client = new IntenusWalrusClient({ network: 'testnet' });
+const signer = new Ed25519Keypair();
+
+// Prepare intents
 const intents = [
-  { intent_id: 'intent_1', data: { /* ... */ }, category: 'swap' },
-  { intent_id: 'intent_2', data: { /* ... */ }, category: 'lend' },
-  // ... up to 666 intents
+  { intent_id: 'intent_1', data: { action: 'swap' }, category: 'swap' },
+  { intent_id: 'intent_2', data: { action: 'lend' }, category: 'lending' }
 ];
 
-// 1. Analyze if Quilt is beneficial
-const analysis = client.batches.calculateQuiltBenefit(intents.length, 512); // Assuming 512 bytes avg. size
+// Step 1: Store intents as Quilt
+const quiltResult = await client.batches.storeIntentsQuilt(
+  intents,
+  'batch_12345',
+  signer
+);
+
+console.log('Quilt stored:', quiltResult.blobId);
+console.log('Patches:', quiltResult.patches.length);
+
+// IMPORTANT: Store quiltResult.patches for later use
+// You'll need patch.identifier to fetch individual intents
+
+// Step 2a: Fetch individual intent (requires identifier)
+const firstIntentIdentifier = quiltResult.patches[0].identifier;
+const intent = await client.batches.fetchIntentFromQuilt(
+  quiltResult.blobId,
+  firstIntentIdentifier
+);
+
+// Step 2b: Fetch all intents at once (more efficient)
+const allIntents = await client.batches.fetchAllIntentsFromQuilt(
+  quiltResult.blobId
+);
+
+console.log('Fetched all intents:', allIntents.length);
+```
+
+### Storing QuiltResult Metadata
+
+You **must** persist `QuiltResult` to enable future reads:
+
+```typescript
+// Option 1: Store in database
+await db.storeQuiltMetadata({
+  batch_id: 'batch_12345',
+  quilt_blob_id: quiltResult.blobId,
+  patches: quiltResult.patches
+});
+
+// Option 2: Store in BatchManifest
+const manifest = {
+  batch_id: 'batch_12345',
+  epoch: 1000,
+  intents: [], // Empty - actual intents in quilt
+  quilt_reference: {
+    blob_id: quiltResult.blobId,
+    patches: quiltResult.patches
+  },
+  // ... other fields
+};
+
+await client.batches.storeManifest(manifest, signer);
+
+// Later: Fetch intents using stored metadata
+const storedManifest = await client.batches.fetchManifest(1000);
+
+if (storedManifest.quilt_reference) {
+  // Cache the index
+  client.cacheQuiltIndex({
+    blobId: storedManifest.quilt_reference.blob_id,
+    patches: storedManifest.quilt_reference.patches,
+    // ... other fields
+  });
+  
+  // Now you can fetch individual intents
+  const intents = await client.batches.fetchAllIntentsFromQuilt(
+    storedManifest.quilt_reference.blob_id
+  );
+}
+```
+
+### Cost Analysis
+
+```typescript
+// Check if Quilt is worth it
+const analysis = client.batches.calculateQuiltBenefit(100, 512);
 
 if (analysis.recommended) {
-  console.log(`Quilt is recommended with estimated savings of ${analysis.estimatedSavings?.toFixed(1)}%`);
-
-  // 2. Store the batch of intents as a single Quilt
-  const quiltResult = await client.batches.storeIntentsQuilt(intents, 'batch_12345', signer);
-  console.log('Intents stored in Quilt. Blob ID:', quiltResult.blobId);
-
-  // 3. You can still fetch individual intents from the Quilt
-  const firstIntentPatchId = quiltResult.patches[0].patchId;
-  const fetchedIntent = await client.batches.fetchIntentFromQuilt(firstIntentPatchId);
-  console.log('Fetched individual intent:', fetchedIntent);
+  console.log(`Use Quilt: ${analysis.estimatedSavings?.toFixed(1)}% savings`);
+  // Use Quilt
+} else {
+  console.log(`Skip Quilt: ${analysis.reason}`);
+  // Use individual blobs
 }
 ```
 

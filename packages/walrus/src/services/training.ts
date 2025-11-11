@@ -56,18 +56,13 @@ export class TrainingStorageService {
     features: Buffer;
     labels: Buffer;
   }> {
-    // Fetch metadata
-    const metadataPath = StoragePathBuilder.build('datasetMetadata', version);
-    const metadataBuffer = await this.client.fetchRaw(metadataPath);
+    // Note: This method needs to be updated to work with blob IDs
+    // For now, it assumes the version maps to a blob ID
+    const metadataBuffer = await this.client.fetchRaw(version + '_metadata');
     const metadata: TrainingDatasetMetadata = JSON.parse(metadataBuffer.toString());
     
-    // Fetch features
-    const featuresPath = StoragePathBuilder.build('datasetFeatures', version);
-    const features = await this.client.fetchRaw(featuresPath);
-    
-    // Fetch labels
-    const labelsPath = StoragePathBuilder.build('datasetLabels', version);
-    const labels = await this.client.fetchRaw(labelsPath);
+    const features = await this.client.fetchRaw(metadata.features_blob_id);
+    const labels = await this.client.fetchRaw(metadata.labels_blob_id);
     
     return { metadata, features, labels };
   }
@@ -110,33 +105,27 @@ export class TrainingStorageService {
     metadata: ModelMetadata;
     model: Buffer;
   }> {
-    // Fetch metadata
-    const metadataPath = StoragePathBuilder.build('modelMetadata', name, version);
-    const metadataBuffer = await this.client.fetchRaw(metadataPath);
+    // Note: This method needs to be updated to work with blob IDs
+    const metadataBuffer = await this.client.fetchRaw(`${name}_${version}_metadata`);
     const metadata: ModelMetadata = JSON.parse(metadataBuffer.toString());
     
-    // Fetch model
-    const modelPath = StoragePathBuilder.build('modelFile', name, version);
-    const model = await this.client.fetchRaw(modelPath);
+    const model = await this.client.fetchRaw(metadata.model_blob_id);
     
     return { metadata, model };
   }
   
   async datasetExists(version: string): Promise<boolean> {
-    const metadataPath = StoragePathBuilder.build('datasetMetadata', version);
-    return this.client.exists(metadataPath);
+    return this.client.exists(version + '_metadata');
   }
   
   async modelExists(name: string, version: string): Promise<boolean> {
-    const metadataPath = StoragePathBuilder.build('modelMetadata', name, version);
-    return this.client.exists(metadataPath);
+    return this.client.exists(`${name}_${version}_metadata`);
   }
   
-  // ===== QUILT METHODS (BATCH OPTIMIZATION) =====
+  // ===== QUILT METHODS =====
   
   /**
    * Store training data points efficiently using Quilt
-   * Ideal for large datasets with many small data points
    */
   async storeTrainingDataQuilt(
     dataPoints: Array<{ id: string; features: any; labels: any }>,
@@ -151,11 +140,14 @@ export class TrainingStorageService {
   /**
    * Fetch individual training data point from quilt
    */
-  async fetchTrainingDataFromQuilt(patchId: string): Promise<{
+  async fetchTrainingDataFromQuilt(
+    quiltBlobId: string,
+    dataPointIdentifier: string
+  ): Promise<{
     features: any;
     labels: any;
   }> {
-    const buffer = await this.client.fetchFromQuilt(patchId);
+    const buffer = await this.client.fetchFromQuilt(quiltBlobId, dataPointIdentifier);
     return JSON.parse(buffer.toString());
   }
   

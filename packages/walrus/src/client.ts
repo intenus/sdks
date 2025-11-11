@@ -1,5 +1,5 @@
 /**
- * Main Intenus Walrus Client (Facade Pattern)
+ * Main Intenus Walrus Client
  */
 
 import { WalrusClient } from '@mysten/walrus';
@@ -27,7 +27,10 @@ export class IntenusWalrusClient {
   private walrusClient: WalrusClient;
   private config: Required<IntenusWalrusConfig>;
   
-  // Services (Facade Pattern)
+  // Cache for quilt indices
+  private quiltIndexCache: Map<string, QuiltResult> = new Map();
+  
+  // Services
   public readonly batches: BatchStorageService;
   public readonly archives: ArchiveStorageService;
   public readonly users: UserStorageService;
@@ -40,7 +43,7 @@ export class IntenusWalrusClient {
       throw new Error(`Unknown network: ${config.network}`);
     }
     
-    // Set defaults
+    // Initialize configuration
     this.config = {
       network: config.network,
       publisherUrl: config.publisherUrl || networkConfig.walrus.publisher,
@@ -48,7 +51,7 @@ export class IntenusWalrusClient {
       defaultEpochs: config.defaultEpochs || 1,
     };
     
-    // Initialize Walrus client with proper network configuration
+    // Initialize Walrus client
     this.walrusClient = new WalrusClient({
       network: this.config.network === 'devnet' ? 'testnet' : this.config.network,
       suiRpcUrl: networkConfig.sui,
@@ -92,36 +95,31 @@ export class IntenusWalrusClient {
     }
   }
   
-  async fetchRaw(path: string): Promise<Buffer> {
+  async fetchRaw(blobId: string): Promise<Buffer> {
     try {
-      // Note: In real implementation, we'd need to maintain a mapping
-      // from path to blob_id, or use a different approach
-      // For now, we assume path contains the blob_id
-      const blobId = this.extractBlobIdFromPath(path);
       const result = await this.walrusClient.readBlob({ blobId });
       return Buffer.from(result);
     } catch (error: any) {
       throw new WalrusFetchError(
-        `Failed to fetch from ${path}: ${error.message}`,
-        path
+        `Failed to fetch blob ${blobId}: ${error.message}`,
+        blobId
       );
     }
   }
   
-  async exists(path: string): Promise<boolean> {
+  async exists(blobId: string): Promise<boolean> {
     try {
-      await this.fetchRaw(path);
+      await this.fetchRaw(blobId);
       return true;
     } catch {
       return false;
     }
   }
   
-  // ===== QUILT METHODS (BATCH OPTIMIZATION) =====
+  // ===== QUILT METHODS =====
   
   /**
    * Store multiple blobs efficiently using Quilt
-   * Ideal for batching intents, solutions, or training data
    */
   async storeQuilt(
     blobs: QuiltBlob[],
@@ -141,7 +139,7 @@ export class IntenusWalrusClient {
         deletable
       });
       
-      return {
+      const quiltResult: QuiltResult = {
         blobId: result.blobId,
         patches: result.index.patches.map(patch => ({
           patchId: patch.patchId,
@@ -154,6 +152,11 @@ export class IntenusWalrusClient {
         created_at: Date.now(),
         epochs
       };
+      
+      // Cache for future reads
+      this.quiltIndexCache.set(result.blobId, quiltResult);
+      
+      return quiltResult;
     } catch (error: any) {
       throw new WalrusStorageError(
         `Failed to store quilt: ${error.message}`,
@@ -163,24 +166,100 @@ export class IntenusWalrusClient {
   }
   
   /**
-   * Fetch individual blob from quilt by patch ID
+   * Fetch individual blob from quilt
    */
-  async fetchFromQuilt(patchId: string): Promise<Buffer> {
+  async fetchFromQuilt(
+    quiltBlobId: string,
+    patchIdentifier: string
+  ): Promise<Buffer> {
     try {
-      // Note: This would need to be implemented based on Walrus SDK's quilt reading capabilities
-      // For now, we'll use the regular blob reading with patch ID
-      const result = await this.walrusClient.readBlob({ blobId: patchId });
-      return Buffer.from(result);
+      // Retrieve cached index
+      let quiltResult = this.quiltIndexCache.get(quiltBlobId);
+      
+      if (!quiltResult) {
+        throw new Error(
+          `Quilt index not found for blobId ${quiltBlobId}. ` +
+          `Store the QuiltResult when writing to enable individual patch reads.`
+        );
+      }
+      
+      // Locate target patch
+      const patch = quiltResult.patches.find(p => p.identifier === patchIdentifier);
+      
+      if (!patch) {
+        throw new Error(`Patch ${patchIdentifier} not found in quilt ${quiltBlobId}`);
+      }
+      
+      // Fetch complete quilt data
+      const quiltData = await this.walrusClient.readBlob({ blobId: quiltBlobId });
+      
+      // Extract target patch
+      const patchData = quiltData.slice(patch.startIndex, patch.endIndex);
+      
+      return Buffer.from(patchData);
     } catch (error: any) {
       throw new WalrusFetchError(
-        `Failed to fetch from quilt patch ${patchId}: ${error.message}`,
-        patchId
+        `Failed to fetch from quilt: ${error.message}`,
+        quiltBlobId
       );
     }
   }
   
   /**
-   * Encode quilt without storing (for size estimation)
+   * Read entire quilt and return all patches
+   */
+  async readQuilt(quiltBlobId: string): Promise<{
+    patches: Array<{
+      identifier: string;
+      tags: Record<string, string>;
+      data: Buffer;
+    }>;
+  }> {
+    try {
+      // Retrieve cached index
+      let quiltResult = this.quiltIndexCache.get(quiltBlobId);
+      
+      if (!quiltResult) {
+        throw new Error(
+          `Quilt index not found. Cannot read quilt without stored QuiltResult.`
+        );
+      }
+      
+      // Fetch complete quilt data
+      const quiltData = await this.walrusClient.readBlob({ blobId: quiltBlobId });
+      
+      // Extract all patches
+      const patches = quiltResult.patches.map(patch => ({
+        identifier: patch.identifier,
+        tags: patch.tags,
+        data: Buffer.from(quiltData.slice(patch.startIndex, patch.endIndex))
+      }));
+      
+      return { patches };
+    } catch (error: any) {
+      throw new WalrusFetchError(
+        `Failed to read quilt: ${error.message}`,
+        quiltBlobId
+      );
+    }
+  }
+  
+  /**
+   * Store quilt result for later retrieval
+   */
+  cacheQuiltIndex(quiltResult: QuiltResult): void {
+    this.quiltIndexCache.set(quiltResult.blobId, quiltResult);
+  }
+  
+  /**
+   * Get cached quilt index
+   */
+  getQuiltIndex(quiltBlobId: string): QuiltResult | undefined {
+    return this.quiltIndexCache.get(quiltBlobId);
+  }
+  
+  /**
+   * Encode quilt without storing
    */
   async encodeQuilt(blobs: QuiltBlob[]): Promise<{
     quilt: Uint8Array;
@@ -219,7 +298,6 @@ export class IntenusWalrusClient {
   
   /**
    * Calculate optimal batch size for Quilt
-   * Returns recommended number of blobs per quilt
    */
   calculateOptimalBatchSize(averageBlobSize: number): number {
     const MAX_QUILT_BLOBS = 666;
@@ -229,29 +307,14 @@ export class IntenusWalrusClient {
     return Math.min(recommendedCount, MAX_QUILT_BLOBS);
   }
   
-  // ===== UTILITIES =====
-  
-  private extractBlobIdFromPath(path: string): string {
-    // Legacy method - kept for backward compatibility
-    // With Quilt integration, this is less needed
-    console.warn(`extractBlobIdFromPath: Consider using Quilt for better path management`);
-    throw new Error('Path to blob_id mapping not implemented. Use Quilt for batch operations.');
-  }
-  
   // ===== DIRECT WALRUS CLIENT ACCESS =====
   
-  /**
-   * Get the underlying Walrus client for direct access
-   * Use this when you need functionality not provided by the wrapper
-   */
   getWalrusClient(): WalrusClient {
     return this.walrusClient;
   }
   
-  /**
-   * Reset cached data in the client
-   */
   reset(): void {
     this.walrusClient.reset();
+    this.quiltIndexCache.clear();
   }
 }
