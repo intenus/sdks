@@ -1,0 +1,60 @@
+{
+  "name": "@intenus/seal",
+  "version": "1.0.0",
+  "description": "Seal encryption/decryption wrapper for Intenus Protocol (AI infra standard)",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@intenus/common": "workspace:*",
+    "@mysten/seal": "^0.9.3",
+    "@mysten/sui": "^1.44.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.7.3",
+    "tsup": "^8.4.0",
+    "vitest": "^4.0.8"
+  },
+  "peerDependencies": {
+    "@mysten/seal": "^0.9.3",
+    "@mysten/sui": "^1.44.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "seal",
+    "encryption", 
+    "decryption",
+    "intenus",
+    "defi",
+    "sui",
+    "typescript"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/intenus/sdks.git",
+    "directory": "packages/seal"
+  }
+}
