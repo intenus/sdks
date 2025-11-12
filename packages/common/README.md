@@ -17,26 +17,35 @@ This package serves as the single source of truth for all data structures within
 
 The package exports a rich set of types covering the entire protocol lifecycle.
 
-**Example: Core `Intent` Structure**
+**Example: Core `Intent` (IGS) Structure**
 ```typescript
 import type { Intent } from '@intenus/common';
 
 const swapIntent: Intent = {
+  igs_version: '1.0.0',
   intent_id: 'd8f8a8-....',
   user_address: '0x...',
-  category: 'swap',
-  timestamp: Date.now(),
-  action: {
-    type: 'swap_exact_in',
-    params: { slippageBps: 50 } // 0.5%
-  },
-  assets: {
-    inputs: [{ asset_id: '0x2::sui::SUI', amount: '1000000' }], // 1 SUI
-    outputs: [{ asset_id: '0x...::usdc::USDC' }]
+  created_at: Date.now(),
+  intent_type: 'swap.exact_input',
+  description: 'Swap 1 SUI for USDC',
+  operation: {
+    mode: 'exact_input',
+    inputs: [{
+      asset_id: '0x2::sui::SUI',
+      asset_info: { symbol: 'SUI', decimals: 9 },
+      amount: { type: 'exact', value: '1000000' }
+    }],
+    outputs: [{
+      asset_id: '0x...::usdc::USDC',
+      asset_info: { symbol: 'USDC', decimals: 6 },
+      amount: { type: 'range', min: '0', max: '9999999999' }
+    }],
+    expected_outcome: { /* ... */ }
   },
   constraints: {
+    deadline: Date.now() + 300000,
     max_slippage_bps: 50,
-    deadline_ms: Date.now() + 300_000 // 5 minutes
+    min_outputs: [{ asset_id: '0x...::usdc::USDC', amount: '0' }]
   },
   // ... and other properties
 };

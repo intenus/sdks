@@ -4,10 +4,10 @@
 
 import type { Signer } from '@mysten/sui/cryptography';
 import { StoragePathBuilder } from '../utils/paths.js';
-import { batchTrainingDataToQuilt } from '../utils/quilt.js';
+import { WalrusFile } from '@mysten/walrus';
 import { DEFAULT_EPOCHS, SCHEMA_VERSIONS } from '../constants/index.js';
 import type { IntenusWalrusClient } from '../client.js';
-import type { TrainingDatasetMetadata, ModelMetadata, StorageResult, QuiltResult } from '../types/index.js';
+import type { TrainingDatasetMetadata, ModelMetadata, StorageResult } from '../types/index.js';
 
 export class TrainingStorageService {
   constructor(private client: IntenusWalrusClient) {}
@@ -18,174 +18,281 @@ export class TrainingStorageService {
     labels: Buffer,
     metadata: Partial<TrainingDatasetMetadata>,
     signer: Signer
-  ): Promise<StorageResult> {
-    // Store features
+  ): Promise<{
+    metadataResult: StorageResult;
+    featuresResult: StorageResult;
+    labelsResult: StorageResult;
+  }> {
     const featuresPath = StoragePathBuilder.build('datasetFeatures', version);
-    const featuresResult = await this.client.storeRaw(featuresPath, features, DEFAULT_EPOCHS.TRAINING_DATA, signer);
-    
-    // Store labels
     const labelsPath = StoragePathBuilder.build('datasetLabels', version);
-    const labelsResult = await this.client.storeRaw(labelsPath, labels, DEFAULT_EPOCHS.TRAINING_DATA, signer);
     
-    // Store metadata
+    const files = [
+      WalrusFile.from({
+        contents: new Uint8Array(features),
+        identifier: `features-${version}`,
+        tags: {
+          'content-type': 'application/octet-stream',
+          'data-type': 'dataset-features',
+          'version': version,
+          'path': featuresPath
+        }
+      }),
+      WalrusFile.from({
+        contents: new Uint8Array(labels),
+        identifier: `labels-${version}`,
+        tags: {
+          'content-type': 'application/octet-stream',
+          'data-type': 'dataset-labels',
+          'version': version,
+          'path': labelsPath
+        }
+      })
+    ];
+    
+    // Store all files in one transaction using writeFiles
+    const results = await this.client.walrusClient.writeFiles({
+      files,
+      epochs: DEFAULT_EPOCHS.TRAINING_DATA,
+      deletable: true,
+      signer
+    });
+    
+
+    const featuresResult: StorageResult = {
+      blob_id: results[0].blobId,
+      path: featuresPath,
+      size_bytes: features.length,
+      created_at: Date.now(),
+      epochs: DEFAULT_EPOCHS.TRAINING_DATA
+    };
+    
+    const labelsResult: StorageResult = {
+      blob_id: results[0].blobId, // Same blobId as they're in the same quilt
+      path: labelsPath,
+      size_bytes: labels.length,
+      created_at: Date.now(),
+      epochs: DEFAULT_EPOCHS.TRAINING_DATA
+    };
+    
     const fullMetadata: TrainingDatasetMetadata = {
       version,
       created_at: Date.now(),
-      features_blob_id: featuresResult.blob_id,
-      labels_blob_id: labelsResult.blob_id,
-      schema_version: SCHEMA_VERSIONS.TRAINING_DATASET,
-      feature_columns: [],
-      label_columns: [],
       batch_count: 0,
       intent_count: 0,
       execution_count: 0,
-      ...metadata,
+      features_blob_id: results[0].blobId, // Store quilt blob ID
+      labels_blob_id: results[0].blobId, // Store quilt blob ID
+      schema_version: SCHEMA_VERSIONS.TRAINING_DATASET,
+      feature_columns: [],
+      label_columns: [],
+      ...metadata
     };
     
     const metadataPath = StoragePathBuilder.build('datasetMetadata', version);
-    return this.client.storeRaw(
+    const metadataBuffer = Buffer.from(JSON.stringify(fullMetadata, null, 2));
+    
+    // Store metadata separately as it needs to be easily readable
+    const metadataResult = await this.client.storeRaw(
       metadataPath,
-      Buffer.from(JSON.stringify(fullMetadata, null, 2)),
+      metadataBuffer, 
       DEFAULT_EPOCHS.TRAINING_DATA,
       signer
     );
+    
+    return {
+      metadataResult,
+      featuresResult,
+      labelsResult
+    };
   }
   
-  async fetchDataset(version: string): Promise<{
-    metadata: TrainingDatasetMetadata;
-    features: Buffer;
-    labels: Buffer;
-  }> {
-    // Note: This method needs to be updated to work with blob IDs
-    // For now, it assumes the version maps to a blob ID
-    const metadataBuffer = await this.client.fetchRaw(version + '_metadata');
-    const metadata: TrainingDatasetMetadata = JSON.parse(metadataBuffer.toString());
+  async fetchDatasetMetadata(metadataBlobId: string): Promise<TrainingDatasetMetadata> {
+    const buffer = await this.client.fetchRaw(metadataBlobId);
+    return JSON.parse(buffer.toString());
+  }
+  
+  async fetchDatasetFeatures(featuresBlobId: string, version: string): Promise<Buffer> {
+    const blob = await this.client.walrusClient.getBlob({ blobId: featuresBlobId });
+    const files = await blob.files({ identifiers: [`features-${version}`] });
     
-    const features = await this.client.fetchRaw(metadata.features_blob_id);
-    const labels = await this.client.fetchRaw(metadata.labels_blob_id);
+    if (files.length === 0) {
+      throw new Error(`Features not found for version ${version}`);
+    }
     
-    return { metadata, features, labels };
+    const data = await files[0].bytes();
+    return Buffer.from(data);
+  }
+  
+  async fetchDatasetLabels(labelsBlobId: string, version: string): Promise<Buffer> {
+    const blob = await this.client.walrusClient.getBlob({ blobId: labelsBlobId });
+    const files = await blob.files({ identifiers: [`labels-${version}`] });
+    
+    if (files.length === 0) {
+      throw new Error(`Labels not found for version ${version}`);
+    }
+    
+    const data = await files[0].bytes();
+    return Buffer.from(data);
   }
   
   async storeModel(
     name: string,
     version: string,
-    model: Buffer,
+    modelData: Buffer,
     metadata: Partial<ModelMetadata>,
     signer: Signer
-  ): Promise<StorageResult> {
-    // Store model file
+  ): Promise<{
+    metadataResult: StorageResult;
+    modelResult: StorageResult;
+  }> {
     const modelPath = StoragePathBuilder.build('modelFile', name, version);
-    const modelResult = await this.client.storeRaw(modelPath, model, DEFAULT_EPOCHS.ML_MODELS, signer);
+    const metadataPath = StoragePathBuilder.build('modelMetadata', name, version);
     
-    // Store metadata
-    const fullMetadata: ModelMetadata = {
+    // Create temporary metadata to get blob_id placeholder
+    const tempMetadata: ModelMetadata = {
       name,
       version,
       created_at: Date.now(),
-      model_blob_id: modelResult.blob_id,
-      model_type: metadata.model_type || 'unknown',
-      framework: metadata.framework || 'unknown',
-      training_dataset_version: metadata.training_dataset_version || 'unknown',
-      training_duration_ms: metadata.training_duration_ms || 0,
-      metrics: metadata.metrics || {},
-      config: metadata.config || { input_shape: [], output_shape: [] },
+      model_type: 'unknown',
+      framework: 'unknown',
+      model_blob_id: '', // Will be updated after storage
+      training_dataset_version: 'unknown',
+      training_duration_ms: 0,
+      metrics: {},
+      config: {
+        input_shape: [],
+        output_shape: []
+      },
+      ...metadata
     };
     
-    const metadataPath = StoragePathBuilder.build('modelMetadata', name, version);
-    return this.client.storeRaw(
+    // Create WalrusFiles for model and metadata together
+    const files = [
+      WalrusFile.from({
+        contents: new Uint8Array(modelData),
+        identifier: `model-${name}-${version}`,
+        tags: {
+          'content-type': 'application/octet-stream',
+          'data-type': 'ml-model',
+          'model-name': name,
+          'model-version': version,
+          'path': modelPath
+        }
+      })
+    ];
+    
+    // Store model using writeFiles
+    const results = await this.client.walrusClient.writeFiles({
+      files,
+      epochs: DEFAULT_EPOCHS.ML_MODELS,
+      deletable: true,
+      signer
+    });
+    
+    const modelResult: StorageResult = {
+      blob_id: results[0].blobId,
+      path: modelPath,
+      size_bytes: modelData.length,
+      created_at: Date.now(),
+      epochs: DEFAULT_EPOCHS.ML_MODELS
+    };
+    
+    // Update metadata with actual blob_id
+    const fullMetadata: ModelMetadata = {
+      ...tempMetadata,
+      model_blob_id: results[0].blobId
+    };
+    
+    // Store metadata separately as it needs to be easily readable
+    const metadataBuffer = Buffer.from(JSON.stringify(fullMetadata, null, 2));
+    const metadataResult = await this.client.storeRaw(
       metadataPath,
-      Buffer.from(JSON.stringify(fullMetadata, null, 2)),
+      metadataBuffer, 
       DEFAULT_EPOCHS.ML_MODELS,
       signer
     );
-  }
-  
-  async fetchModel(name: string, version: string): Promise<{
-    metadata: ModelMetadata;
-    model: Buffer;
-  }> {
-    // Note: This method needs to be updated to work with blob IDs
-    const metadataBuffer = await this.client.fetchRaw(`${name}_${version}_metadata`);
-    const metadata: ModelMetadata = JSON.parse(metadataBuffer.toString());
     
-    const model = await this.client.fetchRaw(metadata.model_blob_id);
+    return {
+      metadataResult,
+      modelResult
+    };
+  }
+  
+  async fetchModelMetadata(metadataBlobId: string): Promise<ModelMetadata> {
+    const buffer = await this.client.fetchRaw(metadataBlobId);
+    return JSON.parse(buffer.toString());
+  }
+  
+  async fetchModel(modelBlobId: string, name: string, version: string): Promise<Buffer> {
+    const blob = await this.client.walrusClient.getBlob({ blobId: modelBlobId });
+    const files = await blob.files({ identifiers: [`model-${name}-${version}`] });
     
-    return { metadata, model };
+    if (files.length === 0) {
+      throw new Error(`Model not found for ${name}@${version}`);
+    }
+    
+    const data = await files[0].bytes();
+    return Buffer.from(data);
   }
-  
-  async datasetExists(version: string): Promise<boolean> {
-    return this.client.exists(version + '_metadata');
-  }
-  
-  async modelExists(name: string, version: string): Promise<boolean> {
-    return this.client.exists(`${name}_${version}_metadata`);
-  }
-  
-  // ===== QUILT METHODS =====
   
   /**
-   * Store training data points efficiently using Quilt
+   * Store training data points efficiently - Walrus chooses optimal method
    */
-  async storeTrainingDataQuilt(
+  async storeTrainingData(
     dataPoints: Array<{ id: string; features: any; labels: any }>,
     datasetVersion: string,
     signer: Signer,
     epochs: number = DEFAULT_EPOCHS.TRAINING_DATA
-  ): Promise<QuiltResult> {
-    const quiltBlobs = batchTrainingDataToQuilt(dataPoints, datasetVersion);
-    return this.client.storeQuilt(quiltBlobs, epochs, signer);
+  ): Promise<{ blobId: string; dataPointIds: string[] }> {
+    const files = dataPoints.map(point => 
+      WalrusFile.from({
+        contents: new TextEncoder().encode(JSON.stringify(point)),
+        identifier: point.id,
+        tags: {
+          'content-type': 'application/json',
+          'dataset-version': datasetVersion,
+          'data-type': 'training-point'
+        }
+      })
+    );
+
+    const results = await this.client.walrusClient.writeFiles({
+      files,
+      epochs,
+      deletable: true,
+      signer
+    });
+
+    return {
+      blobId: results[0].blobId,
+      dataPointIds: dataPoints.map(p => p.id)
+    };
   }
   
   /**
-   * Fetch individual training data point from quilt
+   * Fetch training data points from storage
    */
-  async fetchTrainingDataFromQuilt(
-    quiltBlobId: string,
-    dataPointIdentifier: string
-  ): Promise<{
+  async fetchTrainingData(blobId: string): Promise<Array<{
+    id: string;
     features: any;
     labels: any;
-  }> {
-    const buffer = await this.client.fetchFromQuilt(quiltBlobId, dataPointIdentifier);
-    return JSON.parse(buffer.toString());
-  }
-  
-  /**
-   * Calculate optimal batching strategy for training data
-   */
-  calculateTrainingDataBatching(
-    totalDataPoints: number,
-    averageDataPointSize: number
-  ): {
-    recommended: boolean;
-    batchCount: number;
-    pointsPerBatch: number;
-    estimatedSavings?: number;
-  } {
-    const { shouldUseQuilt, calculateQuiltSavings } = require('../utils/quilt.js');
-    const MAX_QUILT_SIZE = 666;
+  }>> {
+    const blob = await this.client.walrusClient.getBlob({ blobId });
+    const files = await blob.files();
     
-    if (totalDataPoints <= MAX_QUILT_SIZE) {
-      const analysis = shouldUseQuilt(totalDataPoints, averageDataPointSize);
-      return {
-        recommended: analysis.recommended,
-        batchCount: 1,
-        pointsPerBatch: totalDataPoints,
-        estimatedSavings: analysis.estimatedSavings
-      };
+    const dataPoints = [];
+    for (const file of files) {
+      const content = await file.text();
+      const point = JSON.parse(content);
+      const identifier = await file.getIdentifier();
+      
+      dataPoints.push({
+        id: identifier || point.id,
+        features: point.features,
+        labels: point.labels
+      });
     }
     
-    // Multiple quilts needed
-    const pointsPerBatch = MAX_QUILT_SIZE;
-    const batchCount = Math.ceil(totalDataPoints / pointsPerBatch);
-    const savings = calculateQuiltSavings(pointsPerBatch, averageDataPointSize);
-    
-    return {
-      recommended: savings.savingsPercent > 20,
-      batchCount,
-      pointsPerBatch,
-      estimatedSavings: savings.savingsPercent
-    };
+    return dataPoints;
   }
 }

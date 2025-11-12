@@ -21,7 +21,7 @@ export class P2PMatcher {
    */
   findMatches(intents: Intent[]): P2PMatch[] {
     const matches: P2PMatch[] = [];
-    const swapIntents = intents.filter(i => i.category === 'swap');
+    const swapIntents = intents.filter(i => i.intent_type?.startsWith('swap.'));
     
     // Simple O(n²) matching - solvers should use better algorithms
     for (let i = 0; i < swapIntents.length; i++) {
@@ -35,16 +35,16 @@ export class P2PMatcher {
   }
   
   private tryMatch(intent1: Intent, intent2: Intent): P2PMatch | null {
-    const input1 = intent1.assets.inputs[0];
-    const output1 = intent1.assets.outputs[0];
-    const input2 = intent2.assets.inputs[0];
-    const output2 = intent2.assets.outputs[0];
+    const input1 = intent1.operation.inputs[0];
+    const output1 = intent1.operation.outputs[0];
+    const input2 = intent2.operation.inputs[0];
+    const output2 = intent2.operation.outputs[0];
     
     // Check if intent1's output = intent2's input and vice versa
     if (output1.asset_id === input2.asset_id && output2.asset_id === input1.asset_id) {
       // Found a match!
-      const amount1 = input1.amount || '0';
-      const amount2 = input2.amount || '0';
+      const amount1 = input1.amount.type === 'exact' ? input1.amount.value : '0';
+      const amount2 = input2.amount.type === 'exact' ? input2.amount.value : '0';
       
       return {
         intent1,

@@ -29,6 +29,11 @@ export class UserStorageService extends BaseStorageService<UserHistoryAggregated
     return this.fetch(address);
   }
   
+  async fetchHistoryById(blobId: string): Promise<UserHistoryAggregated> {
+    const buffer = await this.client.fetchRaw(blobId);
+    return this.deserialize(buffer);
+  }
+  
   async historyExists(address: string): Promise<boolean> {
     return this.exists(address);
   }

@@ -3,6 +3,7 @@
 Optional utilities for building client applications on the Intenus Protocol. This package provides high-level helpers to simplify common tasks such as intent creation and transaction execution.
 
 ## Installation
+
 ```bash
 npm install @intenus/client-sdk @mysten/sui @mysten/walrus @mysten/seal
 ```
@@ -14,9 +15,11 @@ This package is designed to accelerate client-side development by offering conve
 ## Core Utilities
 
 ### `IntentBuilder`
+
 A fluent API for programmatic and type-safe construction of `Intent` objects.
 
 **Example: Creating a Swap Intent**
+
 ```typescript
 import { IntentBuilder } from '@intenus/client-sdk';
 
@@ -35,20 +38,23 @@ const swapIntent = new IntentBuilder(userAddress)
 const advancedSwapIntent = new IntentBuilder(userAddress)
   .swap('0x2::sui::SUI', '1000000000', '0x...::usdc::USDC')
   .constraints({ 
-    maxSlippageBps: 50, // 0.5%
-    deadlineMs: Date.now() + 300_000 // 5-minute deadline
+    max_slippage_bps: 50, // 0.5%
+    deadline: Date.now() + 300000 // 5-minute deadline
   })
   .execution({
-    privacy_level: 'private',
-    urgency: 'high'
+    auto_execute: true,
+    show_top_n: 1
   })
+  .private(true)
   .build();
 ```
 
 ### `PTBExecutor`
+
 A utility for signing and submitting ranked Programmable Transaction Blocks (PTBs) received from the Intenus network. It simplifies simulation, gas estimation, and execution.
 
 **Example: Executing a Solution**
+
 ```typescript
 import { PTBExecutor } from '@intenus/client-sdk';
 import { SuiClient } from '@mysten/sui/client';
@@ -76,6 +82,7 @@ console.log('Transaction executed successfully. Digest:', transactionDigest);
 ```
 
 ### `WalrusIntentHelper`
+
 An optional helper for storing intents on Walrus, which can be useful for applications that manage intent lifecycle directly.
 
 ```typescript
@@ -106,9 +113,13 @@ const suiClient = new SuiClient({ url: 'https://fullnode.testnet.sui.io' });
 
 // 1. Manually construct an Intent object
 const manualIntent: Intent = {
+  igs_version: '1.0.0',
   intent_id: crypto.randomUUID(),
   user_address: '0x...',
-  // ... other properties
+  created_at: Date.now(),
+  intent_type: 'swap.exact_input',
+  description: 'Manual swap',
+  // ... other IGS properties
 };
 
 // 2. Manually execute a ranked PTB

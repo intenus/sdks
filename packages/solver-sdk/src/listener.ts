@@ -1,7 +1,6 @@
 import Redis from 'ioredis';
-import type { Batch, SolutionSubmission, WalrusBatchManifest } from '@intenus/common';
+import type { Batch, SolutionSubmission, BatchManifest } from '@intenus/common';
 import type { IntenusWalrusClient } from '@intenus/walrus';
-import { WalrusBatchFetcher } from './walrus-fetcher.js';
 
 /**
  * OPTIONAL: Redis listener for batch notifications
@@ -9,24 +8,20 @@ import { WalrusBatchFetcher } from './walrus-fetcher.js';
  */
 export class SolverListener {
   private redis: Redis;
-  private batchCallbacks: Set<(batch: Batch, manifest?: WalrusBatchManifest) => Promise<void>> = new Set();
-  private walrusFetcher?: WalrusBatchFetcher;
+  private batchCallbacks: Set<(batch: Batch, manifest?: BatchManifest) => Promise<void>> = new Set();
   
   constructor(
     redisUrl: string,
     walrusClient?: IntenusWalrusClient
   ) {
     this.redis = new Redis(redisUrl);
-    if (walrusClient) {
-      this.walrusFetcher = new WalrusBatchFetcher(walrusClient);
-    }
   }
   
   /**
    * Subscribe to new batch notifications
    */
   onNewBatch(
-    callback: (batch: Batch, manifest?: WalrusBatchManifest) => Promise<void>
+    callback: (batch: Batch, manifest?: BatchManifest) => Promise<void>
   ): void {
     this.batchCallbacks.add(callback);
     
@@ -40,19 +35,6 @@ export class SolverListener {
         if (channel === 'solver:batch:new') {
           const batch: Batch = JSON.parse(message);
           
-          // Fetch manifest from Walrus if fetcher available
-          let manifest: WalrusBatchManifest | undefined;
-          if (this.walrusFetcher) {
-            try {
-              manifest = await this.walrusFetcher.fetchBatchManifest(batch.epoch);
-            } catch (error) {
-              console.warn('Failed to fetch batch manifest from Walrus:', error);
-            }
-          }
-          
-          for (const callback of this.batchCallbacks) {
-            await callback(batch, manifest).catch(console.error);
-          }
         }
       });
     }

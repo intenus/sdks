@@ -29,6 +29,11 @@ export class ArchiveStorageService extends BaseStorageService<BatchArchive> {
     return this.fetch(epoch, batchId);
   }
   
+  async fetchArchiveById(blobId: string): Promise<BatchArchive> {
+    const buffer = await this.client.fetchRaw(blobId);
+    return this.deserialize(buffer);
+  }
+  
   async archiveExists(epoch: number, batchId: string): Promise<boolean> {
     return this.exists(epoch, batchId);
   }

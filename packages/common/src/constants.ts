@@ -19,26 +19,21 @@ export const PROTOCOL_CONSTANTS = {
  */
 export const NETWORKS = {
   MAINNET: {
-    sui: getEnv('SUI_MAINNET_RPC_URL', 'https://fullnode.mainnet.sui.io:443')!,
+    sui_rpc_url: getEnv('SUI_MAINNET_RPC_URL', 'https://fullnode.mainnet.sui.io:443')!,
     walrus: {
       publisher: getEnv('WALRUS_MAINNET_PUBLISHER_URL', 'https://publisher.walrus.space')!,
       aggregator: getEnv('WALRUS_MAINNET_AGGREGATOR_URL', 'https://aggregator.walrus.space')!,
+      uploadRelay: getEnv('WALRUS_MAINNET_UPLOAD_RELAY_URL', 'https://upload-relay.mainnet.walrus.space')!,
     },
   },
   TESTNET: {
-    sui: getEnv('SUI_TESTNET_RPC_URL', 'https://fullnode.testnet.sui.io:443')!,
+    sui_rpc_url: getEnv('SUI_TESTNET_RPC_URL', 'https://fullnode.testnet.sui.io:443')!,
     walrus: {
       publisher: getEnv('WALRUS_TESTNET_PUBLISHER_URL', 'https://publisher.walrus-testnet.walrus.space')!,
       aggregator: getEnv('WALRUS_TESTNET_AGGREGATOR_URL', 'https://aggregator.walrus-testnet.walrus.space')!,
+      uploadRelay: getEnv('WALRUS_TESTNET_UPLOAD_RELAY_URL', 'https://upload-relay.testnet.walrus.space')!,
     },
-  },
-  DEVNET: {
-    sui: getEnv('SUI_DEVNET_RPC_URL', 'https://fullnode.devnet.sui.io:443')!,
-    walrus: {
-      publisher: getEnv('WALRUS_DEVNET_PUBLISHER_URL', 'https://publisher.walrus-devnet.walrus.space')!,
-      aggregator: getEnv('WALRUS_DEVNET_AGGREGATOR_URL', 'https://aggregator.walrus-devnet.walrus.space')!,
-    },
-  },
+  }
 } as const;
 
 /**

@@ -1,0 +1,520 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://intenus.org/schemas/igs/v1.0.0",
+  "title": "Intenus General Standard (IGS) v1.0",
+  "description": "Universal standard for DeFi intents with AI ranking",
+  "type": "object",
+  "required": [
+    "igs_version",
+    "intent_id", 
+    "user_address",
+    "created_at",
+    "intent_type",
+    "description",
+    "operation",
+    "constraints",
+    "preferences",
+    "timing",
+    "metadata"
+  ],
+  "properties": {
+    "igs_version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "IGS version"
+    },
+    "intent_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Unique intent identifier"
+    },
+        "user_address": {
+          "type": "string",
+          "pattern": "^0x[a-fA-F0-9]{1,64}$",
+          "description": "User address"
+        },
+    "created_at": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Creation timestamp (Unix ms)"
+    },
+    "intent_type": {
+      "type": "string",
+      "enum": [
+        "swap.exact_input",
+        "swap.exact_output", 
+        "limit.sell",
+        "limit.buy"
+      ],
+      "description": "Intent type"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "description": "Human-readable description"
+    },
+    "operation": {
+      "$ref": "#/$defs/IGSOperation"
+    },
+    "constraints": {
+      "$ref": "#/$defs/IGSConstraints"
+    },
+    "preferences": {
+      "$ref": "#/$defs/IGSPreferences"
+    },
+    "timing": {
+      "$ref": "#/$defs/IGSTiming"
+    },
+    "metadata": {
+      "$ref": "#/$defs/IGSMetadata"
+    }
+  },
+  "additionalProperties": false,
+
+  "$defs": {
+    "IGSOperation": {
+      "type": "object",
+      "required": ["mode", "inputs", "outputs", "expected_outcome"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["exact_input", "exact_output", "limit_order"],
+          "description": "Operation mode"
+        },
+        "inputs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/IGSAssetFlow"
+          },
+          "description": "Input assets"
+        },
+        "outputs": {
+          "type": "array", 
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/IGSAssetFlow"
+          },
+          "description": "Output assets"
+        },
+        "expected_outcome": {
+          "$ref": "#/$defs/IGSExpectedOutcome"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "IGSAssetFlow": {
+      "type": "object",
+      "required": ["asset_id", "asset_info", "amount"],
+      "properties": {
+        "asset_id": {
+          "type": "string",
+          "pattern": "^(0x[a-fA-F0-9]{1,64}::[a-zA-Z0-9_]+::[a-zA-Z0-9_]+|native)$",
+          "description": "Asset identifier"
+        },
+        "asset_info": {
+          "type": "object",
+          "required": ["symbol", "decimals"],
+          "properties": {
+            "symbol": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20,
+              "pattern": "^[A-Z0-9]+$"
+            },
+            "decimals": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 18
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          "additionalProperties": false
+        },
+        "amount": {
+          "$ref": "#/$defs/IGSAmount"
+        },
+        "min_amount": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "Minimum amount (for slippage protection)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "IGSAmount": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": {"const": "exact"},
+            "value": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object", 
+          "required": ["type", "min", "max"],
+          "properties": {
+            "type": {"const": "range"},
+            "min": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "max": {
+              "type": "string", 
+              "pattern": "^[0-9]+$"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {"const": "all"}
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+
+    "IGSExpectedOutcome": {
+      "type": "object",
+      "required": ["expected_outputs", "expected_costs", "benchmark"],
+      "properties": {
+        "expected_outputs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["asset_id", "amount"],
+            "properties": {
+              "asset_id": {"type": "string"},
+              "amount": {
+                "type": "string",
+                "pattern": "^[0-9]+$"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "expected_costs": {
+          "type": "object",
+          "required": ["gas_estimate"],
+          "properties": {
+            "gas_estimate": {
+              "type": "string",
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
+            },
+            "protocol_fees": {
+              "type": "string",
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
+            },
+            "slippage_estimate": {
+              "type": "string", 
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "benchmark": {
+          "type": "object",
+          "required": ["source", "timestamp", "confidence"],
+          "properties": {
+            "source": {
+              "type": "string",
+              "enum": ["dex_aggregator", "oracle", "manual", "calculated"]
+            },
+            "timestamp": {
+              "type": "number",
+              "minimum": 0
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "market_price": {
+          "type": "object",
+          "required": ["price", "price_asset"],
+          "properties": {
+            "price": {
+              "type": "string",
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
+            },
+            "price_asset": {"type": "string"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "IGSConstraints": {
+      "type": "object",
+      "required": ["deadline", "max_slippage_bps", "min_outputs"],
+      "properties": {
+        "deadline": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Hard deadline (Unix timestamp ms)"
+        },
+        "max_slippage_bps": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Maximum slippage in basis points (100 bps = 1%)"
+        },
+        "max_gas_cost": {
+          "type": "object",
+          "required": ["asset_id", "amount"],
+          "properties": {
+            "asset_id": {"type": "string"},
+            "amount": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "min_outputs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["asset_id", "amount"],
+            "properties": {
+              "asset_id": {"type": "string"},
+              "amount": {
+                "type": "string",
+                "pattern": "^[0-9]+$"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "routing": {
+          "type": "object",
+          "properties": {
+            "max_hops": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 10
+            },
+            "blacklist_protocols": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "whitelist_protocols": {
+              "type": "array", 
+              "items": {"type": "string"}
+            }
+          },
+          "additionalProperties": false
+        },
+        "limit_price": {
+          "type": "object",
+          "required": ["price", "comparison", "price_asset"],
+          "properties": {
+            "price": {
+              "type": "string",
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
+            },
+            "comparison": {
+              "type": "string",
+              "enum": ["gte", "lte"]
+            },
+            "price_asset": {"type": "string"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "IGSPreferences": {
+      "type": "object",
+      "required": ["optimization_goal", "ranking_weights", "execution"],
+      "properties": {
+        "optimization_goal": {
+          "type": "string",
+          "enum": ["maximize_output", "minimize_gas", "fastest_execution", "balanced"]
+        },
+        "ranking_weights": {
+          "type": "object",
+          "required": ["surplus_weight", "gas_cost_weight", "execution_speed_weight", "reputation_weight"],
+          "properties": {
+            "surplus_weight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "gas_cost_weight": {
+              "type": "number", 
+              "minimum": 0,
+              "maximum": 100
+            },
+            "execution_speed_weight": {
+              "type": "number",
+              "minimum": 0, 
+              "maximum": 100
+            },
+            "reputation_weight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
+          },
+          "additionalProperties": false
+        },
+        "execution": {
+          "type": "object",
+          "required": ["auto_execute", "show_top_n", "require_simulation"],
+          "properties": {
+            "auto_execute": {"type": "boolean"},
+            "show_top_n": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 10
+            },
+            "require_simulation": {"type": "boolean"}
+          },
+          "additionalProperties": false
+        },
+        "privacy": {
+          "type": "object",
+          "properties": {
+            "encrypt_intent": {"type": "boolean"},
+            "anonymous_execution": {"type": "boolean"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "IGSTiming": {
+      "type": "object",
+      "required": ["absolute_deadline", "solver_window_ms", "user_decision_timeout_ms", "batch"],
+      "properties": {
+        "absolute_deadline": {
+          "type": "number",
+          "minimum": 0
+        },
+        "solver_window_ms": {
+          "type": "number",
+          "minimum": 1000,
+          "maximum": 300000
+        },
+        "user_decision_timeout_ms": {
+          "type": "number",
+          "minimum": 5000,
+          "maximum": 3600000
+        },
+        "batch": {
+          "type": "object",
+          "required": ["batch_id", "batch_epoch", "batch_closes_at"],
+          "properties": {
+            "batch_id": {"type": "string"},
+            "batch_epoch": {
+              "type": "number",
+              "minimum": 0
+            },
+            "batch_closes_at": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "execution": {
+          "type": "object",
+          "properties": {
+            "time_in_force": {
+              "type": "string",
+              "enum": ["immediate", "good_til_cancel", "fill_or_kill"]
+            },
+            "earliest_execution": {
+              "type": "number",
+              "minimum": 0
+            },
+            "latest_execution": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "IGSMetadata": {
+      "type": "object",
+      "required": ["client"],
+      "properties": {
+        "original_input": {
+          "type": "object",
+          "required": ["text", "language", "confidence"],
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "language": {
+              "type": "string",
+              "pattern": "^[a-z]{2}$"
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "client": {
+          "type": "object",
+          "required": ["name", "version", "platform"],
+          "properties": {
+            "name": {"type": "string"},
+            "version": {"type": "string"},
+            "platform": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "warnings": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "clarifications": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "tags": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

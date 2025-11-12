@@ -1,5 +1,6 @@
 /**
  * @intenus/walrus - Walrus storage wrapper for Intenus Protocol
+ * Uses WalrusFile API for optimal storage efficiency
  */
 
 // Main client
@@ -9,26 +10,11 @@ export { IntenusWalrusClient } from './client.js';
 export type {
   IntenusWalrusConfig,
   StorageResult,
-  QuiltBlob,
-  QuiltPatch,
-  QuiltResult,
   WalrusStorageError,
   WalrusFetchError
 } from './types/index.js';
 
-// Export utilities
-export {
-  createQuiltBlob,
-  createQuiltBlobFromBuffer,
-  batchIntentsToQuilt,
-  batchSolutionsToQuilt,
-  batchTrainingDataToQuilt,
-  calculateQuiltSavings,
-  shouldUseQuilt,
-  parsePatchIdentifier
-} from './utils/quilt.js';
-
-// Types
+// Export all types
 export type * from './types/index.js';
 
 // Services
@@ -53,5 +39,6 @@ export {
 export type { 
   WalrusClient,
   WalrusClientConfig,
-  WalrusOptions 
+  WalrusOptions,
+  WalrusFile
 } from '@mysten/walrus';

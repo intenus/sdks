@@ -2,61 +2,37 @@
  * Walrus storage configuration and result types
  */
 
-export * from './batch.js';
-export * from './archive.js';
-export * from './user.js';
-export * from './training.js';
+import { SuiClientOptions } from '@mysten/sui/client';
+import { WalrusClientConfig } from '@mysten/walrus';
 
-// Re-export common Walrus types
+export type { 
+  BatchIntent, 
+  BatchManifest,
+  BatchArchive,
+  ArchivedSolution,
+  ExecutionOutcome,
+  MLFeatures,
+  UserHistoryAggregated,
+  TrainingDatasetMetadata,
+  ModelMetadata,
+  StorageResult
+} from '@intenus/common';
+
 export type { 
   WalrusClientConfig,
   WalrusOptions 
 } from '@mysten/walrus';
 
-// ===== CONFIGURATION =====
 
 export interface IntenusWalrusConfig {
-  network: 'mainnet' | 'testnet' | 'devnet';
-  publisherUrl?: string;
-  aggregatorUrl?: string;
-  defaultEpochs?: number;
+  network: 'mainnet' | 'testnet';
+  walrusConfig?: WalrusClientConfig;
+  suiClientOptions?: SuiClientOptions;
 }
 
-// ===== STORAGE RESULT =====
 
-export interface StorageResult {
-  blob_id: string;
-  path: string;
-  size_bytes: number;
-  created_at: number;
-  epochs: number;
-}
 
-// ===== QUILT TYPES =====
 
-export interface QuiltBlob {
-  contents: Uint8Array;
-  identifier: string;
-  tags?: Record<string, string>;
-}
-
-export interface QuiltPatch {
-  patchId: string;
-  identifier: string;
-  tags: Record<string, string>;
-  startIndex: number;
-  endIndex: number;
-}
-
-export interface QuiltResult {
-  blobId: string;
-  patches: QuiltPatch[];
-  size_bytes: number;
-  created_at: number;
-  epochs: number;
-}
-
-// ===== ERROR TYPES =====
 
 export class WalrusStorageError extends Error {
   constructor(message: string, public code: string) {

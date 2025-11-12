@@ -70,4 +70,9 @@ package-lock.json
 yarn.lock
 bun.lockb
 
+# Environment variables
+.env
+.env.local
+.env.*.local
+
 INSTRUCTIONS.md

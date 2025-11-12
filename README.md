@@ -31,21 +31,25 @@ This monorepo contains the following public packages:
 Install the desired packages for your use case.
 
 **For Solver Development:**
+
 ```bash
 npm install @intenus/solver-sdk @mysten/sui @mysten/walrus @mysten/seal ioredis
 ```
 
 **For Client Applications:**
+
 ```bash
 npm install @intenus/client-sdk @mysten/sui @mysten/walrus @mysten/seal
 ```
 
 **For Walrus Storage Only:**
+
 ```bash
 npm install @intenus/walrus @mysten/walrus @mysten/sui
 ```
 
 **For Type Definitions Only:**
+
 ```bash
 npm install @intenus/common
 ```
@@ -158,10 +162,12 @@ if (analysis.recommended) {
 ## Development
 
 ### Prerequisites
+
 - Node.js (v18 or later)
 - pnpm
 
 ### Setup
+
 ```bash
 # Clone the repository
 git clone https://github.com/intenus/sdks.git
@@ -172,6 +178,7 @@ pnpm install
 ```
 
 ### Common Commands
+
 ```bash
 # Build all packages
 pnpm build

@@ -5,10 +5,10 @@ export { NETWORKS as WALRUS_NETWORKS } from '@intenus/common';
 
 export const DEFAULT_EPOCHS = {
   BATCH_MANIFEST: 1,      // Short-term
-  BATCH_ARCHIVE: 365,     // Long-term
-  USER_HISTORY: 30,       // Medium-term
-  TRAINING_DATA: 365,     // Long-term
-  ML_MODELS: 365,         // Long-term
+  BATCH_ARCHIVE: 5,     // Long-term
+  USER_HISTORY: 3,       // Medium-term
+  TRAINING_DATA: 5,     // Long-term
+  ML_MODELS: 5,         // Long-term
 } as const;
 
 export const SCHEMA_VERSIONS = {

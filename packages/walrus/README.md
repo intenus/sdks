@@ -1,229 +1,242 @@
-# @intenus/walrus
+# Intenus Walrus SDK
 
-A structured storage client for the Intenus Protocol, built on top of Mysten Labs' Walrus. It provides high-level services for managing AI/ML-related data, such as batch manifests, training datasets, and user models, while offering cost optimization through Walrus Quilt.
+A TypeScript SDK for efficient decentralized storage on Walrus, optimized for Intenus protocol data structures.
+
+## Features
+
+- **WalrusFile API**: Uses official Walrus SDK for optimal storage efficiency
+- **Automatic Optimization**: Walrus automatically chooses between single blobs and Quilts
+- **Structured Storage**: Organized paths for batches, archives, users, and ML training data
+- **Automatic Retry**: Built-in certification retry logic with exponential backoff
+- **Type Safety**: Full TypeScript support with comprehensive type definitions
+- **Multi-Service**: Dedicated services for different data types
 
 ## Installation
+
 ```bash
-npm install @intenus/walrus @mysten/walrus @mysten/sui
+npm install @intenus/walrus
 ```
-
-## Purpose
-
-This package provides a production-ready storage layer for the Intenus AI infrastructure. It implements a standardized, hierarchical storage structure on Walrus and offers a convenient, object-oriented API for interacting with it. The design follows SOLID principles, utilizing Strategy, Builder, and Facade patterns.
-
-## Core Features
-
-- **Structured Services**: High-level services for managing `batches`, `archives`, `users`, and `training` data.
-- **AI Infrastructure Standard**: Enforces a consistent storage layout for all protocol-related data, crucial for AI/ML model training and data analysis.
-- **Quilt Integration**: Built-in support for Walrus Quilt to optimize storage costs by batching small blobs.
-- **Type Safety**: Fully typed API for all storage operations and data structures.
 
 ## Quick Start
 
-### Initializing the Client
 ```typescript
 import { IntenusWalrusClient } from '@intenus/walrus';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
-const client = new IntenusWalrusClient({ network: 'testnet' });
-const signer = new Ed25519Keypair(); // A Sui signer is required for write operations
-```
+const client = new IntenusWalrusClient({
+  network: 'testnet', // or 'mainnet'
+  defaultEpochs: 1
+});
 
-### Storing a Batch Manifest
-```typescript
+const signer = Ed25519Keypair.generate();
+
 const manifest = {
-  batch_id: 'batch_12345',
-  epoch: 1000,
-  intents: [/* ... array of BatchIntent objects ... */],
-  // ... other manifest properties
+  batch_id: 'batch_001',
+  epoch: Math.floor(Date.now() / 1000),
+  intent_count: 2,
+  intents: [/* ... */],
 };
 
 const result = await client.batches.storeManifest(manifest, signer);
-console.log('Batch manifest stored. Blob ID:', result.blob_id);
-
-// Fetch the manifest later by its epoch
-const fetchedManifest = await client.batches.fetchManifest(1000);
+console.log('Stored:', result.blob_id);
 ```
 
-## Quilt for Cost Optimization
+## Storage Structure
 
-Walrus Quilt batches multiple small blobs into a single storage object, reducing gas fees.
+The SDK organizes data in a structured hierarchy:
 
-### Important: Quilt Reading Pattern
+```
+/batches/{epoch}/
+  └── batch_manifest.json        # BatchManifest (ALL intents inline)
 
-**Quilt does NOT support direct patch reading.** You must:
+/archives/{epoch}/
+  └── batch_{batch_id}.json      # BatchArchive (outcomes + ML features)
 
-1. Store the `QuiltResult` returned from `storeQuilt()`
-2. Use the stored index to extract individual patches
+/users/{address}/
+  └── history_aggregated.json    # UserHistoryAggregated (preferences)
 
-### Example: Correct Quilt Usage
+/training/
+  ├── datasets/{version}/
+  │   ├── dataset_metadata.json  # TrainingDataset metadata
+  │   ├── features.parquet       # ML training features
+  │   └── labels.parquet         # ML training labels
+  └── models/{name}/{version}/
+      ├── model.onnx             # Trained model
+      └── model_metadata.json    # Model info (metrics, config)
+```
+
+## 🚀 Query Builder API (Recommended)
+
+The **WalrusQueryBuilder** provides the most flexible and efficient way to access data:
 
 ```typescript
-import { IntenusWalrusClient } from '@intenus/walrus';
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+// ===== DIRECT ACCESS BY BLOB_ID/QUILT_ID =====
 
-const client = new IntenusWalrusClient({ network: 'testnet' });
-const signer = new Ed25519Keypair();
+// Get any data type by blob_id (fastest method)
+const batch = await client.query.getBatchById("E7_nNXvFU_3qZVu3OH1yycRG7LZlyn1-UxEDCDDqGGU");
+const dataset = await client.query.getTrainingDatasetById("rkcHpHQrornOymttgvSq3zvcmQEsMqzmeUM1HSY4ShU");
 
-// Prepare intents
-const intents = [
-  { intent_id: 'intent_1', data: { action: 'swap' }, category: 'swap' },
-  { intent_id: 'intent_2', data: { action: 'lend' }, category: 'lending' }
-];
+// ===== OPTIMIZED QUILT ACCESS =====
 
-// Step 1: Store intents as Quilt
-const quiltResult = await client.batches.storeIntentsQuilt(
+// Get specific files from quilts by identifier
+const features = await client.query.getTrainingFeatures(quiltId, "v1.0.123");
+const model = await client.query.getModelFile(quiltId, "user_ranker", "v2.1");
+
+// Get files by tags (multiple results)
+const swapIntents = await client.query.getIntentsByCategory(quiltId, "swap");
+const jsonFiles = await client.query.getFromQuiltByTags(quiltId, { 
+  'content-type': 'application/json' 
+});
+
+// List all files in a quilt
+const contents = await client.query.listQuiltContents(quiltId);
+
+// ===== FILTERED QUERIES (requires index) =====
+
+// First, add data to index when storing
+const result = await client.batches.storeManifest(manifest, signer);
+client.query.addBatchToIndex(manifest, result.blob_id);
+
+// Then query by filters
+const batches = await client.query.getBatchesBy({
+  epoch: 12345,
+  intent_count_min: 10,
+  categories: ['swap', 'lending']
+});
+
+const datasets = await client.query.getTrainingDatasetsBy({
+  data_quality_score_min: 0.9,
+  batch_count_min: 100
+});
+```
+
+## Legacy Services
+
+### Batch Service
+
+```typescript
+// Store batch manifest
+await client.batches.storeManifest(manifest, signer);
+
+// Fetch batch manifest by epoch
+const manifest = await client.batches.fetchManifest(epoch);
+
+// Store intents efficiently (Walrus chooses optimal method)
+const result = await client.batches.storeIntents(
   intents,
-  'batch_12345',
+  batchId, 
   signer
 );
 
-console.log('Quilt stored:', quiltResult.blobId);
-console.log('Patches:', quiltResult.patches.length);
+// Fetch intents by epoch (from manifest structure)
+const intentsByEpoch = await client.batches.fetchIntentsByEpoch(epoch);
 
-// IMPORTANT: Store quiltResult.patches for later use
-// You'll need patch.identifier to fetch individual intents
+// Fetch intents by blob ID (direct access)
+const intents = await client.batches.fetchIntents(result.blobId);
 
-// Step 2a: Fetch individual intent (requires identifier)
-const firstIntentIdentifier = quiltResult.patches[0].identifier;
-const intent = await client.batches.fetchIntentFromQuilt(
-  quiltResult.blobId,
-  firstIntentIdentifier
-);
+// Fetch single intent by epoch and ID
+const intent = await client.batches.fetchIntentByEpoch(epoch, 'intent_1');
 
-// Step 2b: Fetch all intents at once (more efficient)
-const allIntents = await client.batches.fetchAllIntentsFromQuilt(
-  quiltResult.blobId
-);
-
-console.log('Fetched all intents:', allIntents.length);
+// Fetch single intent by blob ID and ID
+const singleIntent = await client.batches.fetchIntent(result.blobId, 'intent_1');
 ```
 
-### Storing QuiltResult Metadata
-
-You **must** persist `QuiltResult` to enable future reads:
+### Archive Service
 
 ```typescript
-// Option 1: Store in database
-await db.storeQuiltMetadata({
-  batch_id: 'batch_12345',
-  quilt_blob_id: quiltResult.blobId,
-  patches: quiltResult.patches
-});
-
-// Option 2: Store in BatchManifest
-const manifest = {
-  batch_id: 'batch_12345',
-  epoch: 1000,
-  intents: [], // Empty - actual intents in quilt
-  quilt_reference: {
-    blob_id: quiltResult.blobId,
-    patches: quiltResult.patches
-  },
-  // ... other fields
-};
-
-await client.batches.storeManifest(manifest, signer);
-
-// Later: Fetch intents using stored metadata
-const storedManifest = await client.batches.fetchManifest(1000);
-
-if (storedManifest.quilt_reference) {
-  // Cache the index
-  client.cacheQuiltIndex({
-    blobId: storedManifest.quilt_reference.blob_id,
-    patches: storedManifest.quilt_reference.patches,
-    // ... other fields
-  });
-  
-  // Now you can fetch individual intents
-  const intents = await client.batches.fetchAllIntentsFromQuilt(
-    storedManifest.quilt_reference.blob_id
-  );
-}
-```
-
-### Cost Analysis
-
-```typescript
-// Check if Quilt is worth it
-const analysis = client.batches.calculateQuiltBenefit(100, 512);
-
-if (analysis.recommended) {
-  console.log(`Use Quilt: ${analysis.estimatedSavings?.toFixed(1)}% savings`);
-  // Use Quilt
-} else {
-  console.log(`Skip Quilt: ${analysis.reason}`);
-  // Use individual blobs
-}
-```
-
-## AI Infrastructure Services
-
-The client is organized into services that map to the AI data lifecycle.
-
-### `client.batches`
-Manages the storage of `BatchManifest` objects.
-
-### `client.archives`
-Manages `BatchArchive` objects, which contain the results and ML features of a completed batch.
-```typescript
-const archive = {
-  batch_id: 'batch_12345',
-  epoch: 1000,
-  solutions: [/* ... */],
-  executions: [/* ... */],
-  ml_features: { /* ... */ },
-  // ... other archive properties
-};
 await client.archives.storeArchive(archive, signer);
+
+const archive = await client.archives.fetchArchive(epoch, batchId);
 ```
 
-### `client.users`
-Stores aggregated user history and preferences.
+### User Service
+
 ```typescript
-const userHistory = {
-  user_address: '0x...',
-  preferred_protocols: ['FlowX', 'Scallop'],
-  avg_intent_value_usd: 1200,
-  // ... other user properties
-};
-await client.users.storeHistory(userHistory, signer);
+await client.users.storeHistory(history, signer);
+
+const history = await client.users.fetchHistory(userAddress);
 ```
 
-### `client.training`
-Manages ML training datasets and model artifacts. It supports storing large feature/label files (e.g., in Parquet format) and model files (e.g., ONNX).
+### Training Service
 
 ```typescript
-// Storing a training dataset
-const features = Buffer.from(/* .parquet file buffer */);
-const labels = Buffer.from(/* .parquet file buffer */);
-await client.training.storeDataset('v1.0.0', features, labels, { /* metadata */ }, signer);
+await client.training.storeDataset(dataset, version, signer);
 
-// Storing a trained model
-const modelBuffer = Buffer.from(/* .onnx file buffer */);
-await client.training.storeModel('solution-ranker', 'v1.2.0', modelBuffer, { /* metadata */ }, signer);
+// Store ML model
+await client.training.storeModel(modelData, name, version, signer);
+
+// Fetch model metadata
+const metadata = await client.training.fetchModelMetadata(name, version);
 ```
 
-## Direct Walrus Access
+## Storage Optimization
 
-For advanced use cases, you can access the underlying `@mysten/walrus` client directly.
+Walrus automatically optimizes storage based on file size and count:
+
+- **Single Files**: Stored as individual blobs for optimal access
+- **Multiple Small Files**: Automatically batched into Quilts for cost savings
+- **Large Files**: Stored individually to avoid Quilt overhead
+- **Mixed Sizes**: Intelligently grouped for optimal efficiency
+
+Cost savings can reach **400x** for small files when Quilts are used automatically.
+
+## Configuration
 
 ```typescript
-// Get the raw Walrus client
-const rawWalrusClient = client.getWalrusClient();
-
-// Use the Walrus SDK directly
-const blob = await rawWalrusClient.writeBlob({
-  blob: new Uint8Array(data),
-  deletable: true,
-  epochs: 1,
-  signer: mySigner,
+const client = new IntenusWalrusClient({
+  network: 'testnet',
+  defaultEpochs: 1,
+  publisherUrl: 'https://publisher.walrus.space',
+  aggregatorUrl: 'https://aggregator.walrus.space',
+  uploadRelayUrl: 'https://upload-relay.testnet.walrus.space'
 });
 ```
 
-## Related Packages
+## Error Handling
 
-- [`@intenus/common`](../common): Provides the core type definitions used by this package.
-- [`@intenus/client-sdk`](../client-sdk): Client-side helpers that may use this package for storage.
-- [`@intenus/solver-sdk`](../solver-sdk): Solver-side helpers that may use this package for data retrieval.
+```typescript
+import { WalrusStorageError, WalrusFetchError } from '@intenus/walrus';
+
+try {
+  await client.batches.storeManifest(manifest, signer);
+} catch (error) {
+  if (error instanceof WalrusStorageError) {
+    console.error('Storage failed:', error.message);
+  } else if (error instanceof WalrusFetchError) {
+    console.error('Fetch failed:', error.message);
+  }
+}
+```
+
+## Types
+
+```typescript
+import type { 
+  BatchManifest,
+  BatchArchive,
+  UserHistoryAggregated,
+  TrainingDatasetMetadata,
+  ModelMetadata,
+  QuiltResult
+} from '@intenus/walrus';
+```
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Build
+npm run build
+
+# Test
+npm test
+
+# Lint
+npm run lint
+```
+
+## License
+
+MIT

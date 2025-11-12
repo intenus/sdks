@@ -35,6 +35,15 @@ export interface BatchManifest {
     min_stake_required: string;
     max_solutions_per_solver: number;
   };
+  
+  // Optional reference to a Quilt blob
+  quilt_reference?: {
+    blob_id: string;
+    patches: {
+      patchId: string;
+      identifier: string;
+    }[];
+  };
 }
 
 // ===== BATCH ARCHIVE =====
