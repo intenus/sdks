@@ -39,14 +39,19 @@ The IGS v1.0 MVP focuses on swaps and limit orders with standardized surplus cal
 
 ### 1. Intent Structure
 
+**Two forms of IGS:**
+
+1. **IGSIntent** (Off-chain submission): What the user wants
+2. **IGSObject** (On-chain storage): Stored on Sui blockchain
+
 ```typescript
+// Off-chain intent submission (no blockchain-specific fields)
 interface IGSIntent {
   // IDENTITY
   igs_version: '1.0.0';
-  intent_id: string;
-  user_address: string;
+  created_at: number;
 
-  // CLASSIFICATION  
+  // CLASSIFICATION
   intent_type: IGSIntentType;
   description: string;
 
@@ -59,10 +64,32 @@ interface IGSIntent {
   // PREFERENCES (SHOULD be optimized)
   preferences: IGSPreferences;
 
+  // TIMING
+  timing: IGSTiming;
+
   // METADATA
   metadata: IGSMetadata;
 }
+
+// On-chain object (includes Sui-specific fields)
+interface IGSObject {
+  // ... all fields from IGSIntent ...
+
+  // ON-CHAIN SPECIFIC (from Sui)
+  on_chain: {
+    object_id: string;      // Serves as intent_id
+    version: string;
+    digest: string;
+    owner: string;          // Serves as user_address
+  };
+}
 ```
+
+**Key Changes:**
+- `intent_id` removed from IGSIntent → derived from Sui `object_id`
+- `user_address` removed from IGSIntent → derived from Sui `owner`
+- IGS schema focuses purely on intent (what user wants)
+- Blockchain-specific fields only in IGSObject
 
 **Design Philosophy:** IGS is protocol-agnostic. It describes **what** the user wants, not **how** it will be executed or enforced. Implementation details like timing windows, access control, and validation are handled by the execution layer.
 
@@ -120,8 +147,7 @@ The **Expected Value** is derived from:
 ```json
 {
   "igs_version": "1.0.0",
-  "intent_id": "intent_swap_abc123",
-  "user_address": "0x1234...abcd",
+  "created_at": 1699123456000,
   "intent_type": "swap.exact_input",
   "description": "Swap 100 SUI to USDC",
   "operation": {
@@ -156,7 +182,7 @@ The **Expected Value** is derived from:
       "reputation_weight": 10
     },
     "execution": {
-      "auto_execute": false,
+      "mode": "top_n_with_best_incentive",
       "show_top_n": 3,
       "require_simulation": true
     }
@@ -176,8 +202,7 @@ The **Expected Value** is derived from:
 ```json
 {
   "igs_version": "1.0.0",
-  "intent_id": "intent_limit_xyz789",
-  "user_address": "0x5678...efgh",
+  "created_at": 1699123456000,
   "intent_type": "limit.sell",
   "description": "Sell 1000 SUI at $3.50 limit",
   "operation": {
@@ -213,9 +238,8 @@ The **Expected Value** is derived from:
       "reputation_weight": 10
     },
     "execution": {
-      "auto_execute": true,
-      "show_top_n": 1,
-      "require_simulation": false
+      "mode": "best_solution",
+      "require_simulation": true
     }
   },
   "metadata": {
@@ -332,27 +356,102 @@ interface IGSRankedSolution {
 - Deprecate legacy formats.
 - Transition to a full IGS ecosystem.
 
+## Solution Flow Architecture
+
+### New Flow (MVP)
+
+```
+1. User submits IGSIntent
+   ↓
+2. Intent stored as IGSObject on-chain (gets object_id & owner)
+   ↓
+3. PreRankingEngine processes solutions:
+   - Validates schema compliance
+   - Checks constraints satisfaction
+   - Converts to feature vectors
+   - Runs Sui Dry Run simulation
+   ↓
+4. Only solutions passing PreRanking continue
+   ↓
+5. RankingEngine ranks simulated solutions:
+   - Applies AI ranking based on features
+   - Considers: surplus, gas, speed, reputation
+   - Outputs based on execution mode
+   ↓
+6. Returns result to user:
+   - best_solution: Single best PTB
+   - top_n_with_best_incentive: Top N PTBs (fee goes to best)
+   ↓
+7. User executes chosen PTB (no auto-execution)
+```
+
+### Key Differences from Legacy
+
+1. **No Auto-Execute**: Solvers never execute. They only submit PTBs.
+2. **Dry Run Required**: All solutions simulated before ranking (in PreRanking).
+3. **Two-Stage Ranking**:
+   - PreRankingEngine: Validation + Simulation
+   - RankingEngine: AI-based ranking
+4. **Mode-Based Output**:
+   - `best_solution`: Return only #1 (default MVP)
+   - `top_n_with_best_incentive`: Show top N, but fee always goes to best solver
+
+### Execution Modes
+
+```typescript
+type IGSExecutionMode =
+  | 'best_solution'                 // Return only best (MVP default)
+  | 'top_n_with_best_incentive';    // Show top N, fee to best
+```
+
+**Why no auto_execute?**
+- Solvers don't hold user funds
+- Solutions are PTBs (transaction bytes)
+- User must sign and execute themselves
+- Maintains security and non-custodial nature
+
+**Fee Incentive Design:**
+- In `top_n_with_best_incentive` mode, user can choose any solution
+- BUT: Fee/reward ALWAYS goes to the #1 ranked solver
+- This ensures solvers compete for quality, not just visibility
+- Users get optionality without destroying incentive alignment
+
 ## Implementation Notes
 
 ### For Solvers
 
-1. **Parse IGS Intent**: Understand the operation, constraints, and preferences.
+1. **Parse IGSIntent**: Understand the operation, constraints, and preferences.
 2. **Generate Solution**: Create a PTB that satisfies the constraints.
 3. **Calculate Surplus**: Compare the outcome against the `expected_outcome`.
-4. **Submit IGS Solution**: Format the solution with a compliance score.
+4. **Submit IGS Solution**: Format the solution with compliance score and promised outputs.
+5. **No Execution**: Solvers never execute transactions, only submit PTBs.
 
-### For the AI Router
+### For the PreRankingEngine
 
-1. **Validate Intent**: Check for IGS compliance.
-2. **Collect Solutions**: Aggregate solutions from multiple solvers.
-3. **Rank Solutions**: Rank based on surplus, gas, speed, and reputation.
-4. **Explain Ranking**: Provide AI-generated reasoning to the user.
+1. **Validate Schema**: Check IGS compliance and schema correctness.
+2. **Validate Constraints**: Ensure all hard constraints are satisfied.
+3. **Convert Features**: Extract features for AI ranking (surplus, gas, hops, etc.).
+4. **Dry Run Simulation**: Simulate each solution on Sui to verify execution.
+5. **Filter Failed**: Remove solutions that fail simulation or validation.
+6. **Pass to Ranking**: Send validated solutions with feature vectors to RankingEngine.
+
+### For the RankingEngine
+
+1. **Receive Validated Solutions**: Get solutions that passed PreRanking.
+2. **Apply AI Model**: Rank based on feature vectors and weights.
+3. **Consider Reputation**: Factor in solver historical performance.
+4. **Apply Mode**:
+   - `best_solution`: Return only rank #1
+   - `top_n_with_best_incentive`: Return top N with best marked for fee
+5. **Generate Explanations**: Provide AI reasoning for rankings.
 
 ### For the Frontend
 
-1. **Display Intent**: Show a human-readable format of the intent.
-2. **Show Rankings**: Display the top N solutions with explanations.
-3. **User Choice**: Allow auto-execution or manual selection.
+1. **Submit Intent**: Send IGSIntent (no intent_id/user_address needed).
+2. **Display Intent**: Show human-readable format of what user wants.
+3. **Show Rankings**: Display solutions from RankingEngine with explanations.
+4. **User Choice**: Allow user to select and execute PTB.
+5. **Execute**: User signs and broadcasts chosen transaction.
 
 ## IGS Ecosystem Integration
 

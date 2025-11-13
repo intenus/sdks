@@ -1,19 +1,23 @@
 /**
  * Intenus General Standard (IGS) v1.0
  * Universal standard for DeFi intents with AI ranking and surplus measurement
+ *
+ * ARCHITECTURE:
+ * - IGSIntent: Off-chain intent submission (what user wants)
+ * - IGSObject: On-chain object stored on Sui (intent_id and user_address from object)
+ * - PreRankingEngine: Validates schema, constraints, converts to features vector
+ * - Dry Run: Simulates solutions on Sui
+ * - RankingEngine: Ranks solutions based on simulation results
  */
 
 /**
- * Core IGS Intent structure - the universal standard for DeFi intents
+ * Core IGS Intent structure - for off-chain intent submission
+ * This represents the user's desired intent without blockchain-specific fields
  * @interface IGSIntent
  */
 export interface IGSIntent {
   /** IGS version - must be '1.0.0' for this schema */
   igs_version: '1.0.0';
-  /** Unique intent identifier */
-  intent_id: string;
-  /** User's blockchain address */
-  user_address: string;
   /** Intent creation timestamp (Unix milliseconds) */
   created_at: number;
   /** Type of intent operation */
@@ -30,6 +34,43 @@ export interface IGSIntent {
   timing: IGSTiming;
   /** Additional metadata and context */
   metadata: IGSMetadata;
+}
+
+/**
+ * IGS Object - On-chain representation stored on Sui
+ * The intent_id comes from Sui Object ID, user_address from object owner
+ * @interface IGSObject
+ */
+export interface IGSObject {
+  /** IGS version - must be '1.0.0' for this schema */
+  igs_version: '1.0.0';
+  /** Intent creation timestamp (Unix milliseconds) */
+  created_at: number;
+  /** Type of intent operation */
+  intent_type: IGSIntentType;
+  /** Human-readable description of the intent */
+  description: string;
+  /** Core operation specification */
+  operation: IGSOperation;
+  /** Hard constraints that must be satisfied */
+  constraints: IGSConstraints;
+  /** Soft preferences for optimization */
+  preferences: IGSPreferences;
+  /** Timing and deadline specifications */
+  timing: IGSTiming;
+  /** Additional metadata and context */
+  metadata: IGSMetadata;
+  /** On-chain specific fields from Sui */
+  on_chain: {
+    /** Sui Object ID (serves as intent_id) */
+    object_id: string;
+    /** Object version */
+    version: string;
+    /** Transaction digest that created this object */
+    digest: string;
+    /** Owner address (serves as user_address) */
+    owner: string;
+  };
 }
 
 /**
@@ -171,6 +212,14 @@ export interface IGSConstraints {
 }
 
 /**
+ * Execution mode for RankingEngine output
+ * @typedef {string} IGSExecutionMode
+ */
+export type IGSExecutionMode =
+  | 'best_solution'                 /** Return only the best solution (default for MVP) */
+  | 'top_n_with_best_incentive';    /** Show top N solutions, but fee always goes to best solver */
+
+/**
  * Soft preferences for solution optimization
  * @interface IGSPreferences
  */
@@ -190,11 +239,21 @@ export interface IGSPreferences {
   };
   /** Execution preferences */
   execution: {
-    /** Whether to auto-execute the best solution */
-    auto_execute: boolean;
-    /** Number of top solutions to show user */
-    show_top_n: number;
-    /** Whether to require simulation before execution */
+    /**
+     * Execution mode - determines what RankingEngine returns
+     * Note: Solvers never auto-execute. They only submit PTBs for ranking.
+     * User must execute the returned PTB themselves.
+     */
+    mode: IGSExecutionMode;
+    /**
+     * Number of top solutions to show user (only for top_n_with_best_incentive mode)
+     * For best_solution mode, this is always 1
+     */
+    show_top_n?: number;
+    /**
+     * Whether to require Sui dry run simulation before ranking
+     * Recommended: true for production
+     */
     require_simulation: boolean;
   };
   /** Privacy preferences */
@@ -275,7 +334,7 @@ export interface IGSMetadata {
 export interface IGSSolution {
   /** Unique solution identifier */
   solution_id: string;
-  /** Intent this solution addresses */
+  /** Intent this solution addresses (from Sui Object ID) */
   intent_id: string;
   /** Solver's blockchain address */
   solver_address: string;
@@ -283,8 +342,8 @@ export interface IGSSolution {
   submitted_at: number;
   /** Serialized transaction bytes (hex string) */
   ptb_bytes: string;
-  /** Hash of the transaction */
-  ptb_hash: string;
+  /** Transaction digest/hash */
+  ptb_digest: string;
   /** Promised output amounts */
   promised_outputs: Array<{
     /** Asset identifier */
@@ -324,6 +383,53 @@ export interface IGSSolution {
   compliance_score: number;
   /** Details about compliance issues */
   compliance_details?: string[];
+  /** Sui dry run simulation result (populated by PreRankingEngine) */
+  simulation_result?: IGSSimulationResult;
+}
+
+/**
+ * Result from Sui dry run simulation
+ * @interface IGSSimulationResult
+ */
+export interface IGSSimulationResult {
+  /** Whether simulation was successful */
+  success: boolean;
+  /** Simulated transaction digest */
+  digest?: string;
+  /** Actual gas used in simulation */
+  gas_used?: string;
+  /** Simulated effects */
+  effects?: {
+    /** Status of the simulation */
+    status: 'success' | 'failure';
+    /** Gas object changes */
+    gas_object: {
+      owner: string;
+      reference: {
+        object_id: string;
+        version: string;
+        digest: string;
+      };
+    };
+    /** Modified objects */
+    modified_at_versions?: Array<{
+      object_id: string;
+      sequence_number: string;
+    }>;
+    /** Created objects */
+    created?: Array<{
+      owner: string;
+      reference: {
+        object_id: string;
+        version: string;
+        digest: string;
+      };
+    }>;
+  };
+  /** Error message if simulation failed */
+  error?: string;
+  /** Simulation timestamp */
+  simulated_at: number;
 }
 
 /**
@@ -388,11 +494,86 @@ export interface IGSValidationError {
   severity: 'error' | 'warning';
 }
 
+/**
+ * PreRankingEngine result - validates and prepares solutions for ranking
+ * @interface IGSPreRankingResult
+ */
+export interface IGSPreRankingResult {
+  /** Solutions that passed pre-ranking validation */
+  passed_solutions: IGSSolution[];
+  /** Solutions that failed pre-ranking */
+  failed_solutions: Array<{
+    solution: IGSSolution;
+    failure_reason: string;
+    errors: IGSValidationError[];
+  }>;
+  /** Feature vectors for AI ranking */
+  feature_vectors: Array<{
+    solution_id: string;
+    features: {
+      /** Surplus metrics */
+      surplus_usd: number;
+      surplus_percentage: number;
+      /** Cost metrics */
+      gas_cost: number;
+      protocol_fees: number;
+      /** Complexity metrics */
+      total_hops: number;
+      protocols_count: number;
+      /** Simulation metrics (from dry run) */
+      simulated_gas_used?: number;
+      simulation_success: boolean;
+      /** Solver reputation */
+      solver_reputation_score?: number;
+    };
+  }>;
+  /** Statistics */
+  stats: {
+    total_submitted: number;
+    passed: number;
+    failed: number;
+    simulated: number;
+  };
+  /** Timestamp */
+  processed_at: number;
+}
+
+/**
+ * RankingEngine result - final ranked solutions for user
+ * @interface IGSRankingResult
+ */
+export interface IGSRankingResult {
+  /** Intent ID this ranking is for */
+  intent_id: string;
+  /** Execution mode used */
+  mode: IGSExecutionMode;
+  /** Ranked solutions (1 for best_solution, N for top_n_with_best_incentive) */
+  ranked_solutions: IGSRankedSolution[];
+  /**
+   * Best solution (for incentive)
+   * This solution always receives the fee, even in top_n mode
+   */
+  best_solution: IGSRankedSolution;
+  /** Ranking metadata */
+  metadata: {
+    /** Total solutions considered */
+    total_solutions: number;
+    /** Average AI score */
+    avg_ai_score: number;
+    /** Ranking model version */
+    model_version: string;
+    /** Ranking strategy used */
+    strategy: string;
+  };
+  /** When this ranking was created */
+  ranked_at: number;
+  /** When this ranking expires */
+  expires_at: number;
+}
+
 // Examples
 export const EXAMPLE_SIMPLE_SWAP: IGSIntent = {
   igs_version: '1.0.0',
-  intent_id: 'intent_swap_001',
-  user_address: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
   created_at: Date.now(),
 
   intent_type: 'swap.exact_input',
@@ -462,7 +643,7 @@ export const EXAMPLE_SIMPLE_SWAP: IGSIntent = {
       reputation_weight: 10
     },
     execution: {
-      auto_execute: false,
+      mode: 'top_n_with_best_incentive',
       show_top_n: 3,
       require_simulation: true
     }
@@ -496,8 +677,6 @@ export const EXAMPLE_SIMPLE_SWAP: IGSIntent = {
 
 export const EXAMPLE_LIMIT_ORDER: IGSIntent = {
   igs_version: '1.0.0',
-  intent_id: 'intent_limit_001',
-  user_address: '0x456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef012',
   created_at: Date.now(),
 
   intent_type: 'limit.sell',
@@ -572,9 +751,8 @@ export const EXAMPLE_LIMIT_ORDER: IGSIntent = {
       reputation_weight: 10
     },
     execution: {
-      auto_execute: true,
-      show_top_n: 1,
-      require_simulation: false
+      mode: 'best_solution',
+      require_simulation: true
     },
     privacy: {
       encrypt_intent: true,
@@ -637,15 +815,6 @@ export function validateIGS(intent: IGSIntent): IGSValidationResult {
       code: 'INVALID_VERSION',
       field: 'igs_version',
       message: 'IGS version must be 1.0.0',
-      severity: 'error'
-    });
-  }
-
-  if (!intent.intent_id) {
-    errors.push({
-      code: 'MISSING_INTENT_ID',
-      field: 'intent_id',
-      message: 'Intent ID is required',
       severity: 'error'
     });
   }

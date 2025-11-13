@@ -137,7 +137,7 @@ export class IGSSchemaValidator {
   private static validateCrossFields(intent: any, errors: IGSValidationError[], warnings: string[]): void {
     const intentType = intent.intent_type;
     const operationMode = intent.operation?.mode;
-    
+
     if (intentType === 'swap.exact_input' && operationMode !== 'exact_input') {
       warnings.push('Intent type and operation mode mismatch');
     }
@@ -150,11 +150,11 @@ export class IGSSchemaValidator {
 
     const weights = intent.preferences?.ranking_weights;
     if (weights) {
-      const total = (weights.surplus_weight || 0) + 
-                   (weights.gas_cost_weight || 0) + 
-                   (weights.execution_speed_weight || 0) + 
+      const total = (weights.surplus_weight || 0) +
+                   (weights.gas_cost_weight || 0) +
+                   (weights.execution_speed_weight || 0) +
                    (weights.reputation_weight || 0);
-      
+
       if (Math.abs(total - 100) > 0.01) {
         warnings.push(`Ranking weights sum to ${total}, should sum to 100`);
       }
@@ -167,6 +167,23 @@ export class IGSSchemaValidator {
         message: 'Limit price is required for limit orders',
         severity: 'error'
       });
+    }
+
+    // Validate execution mode
+    const execMode = intent.preferences?.execution?.mode;
+    if (execMode) {
+      if (execMode !== 'best_solution' && execMode !== 'top_n_with_best_incentive') {
+        errors.push({
+          code: 'INVALID_EXECUTION_MODE',
+          field: 'preferences.execution.mode',
+          message: 'Execution mode must be best_solution or top_n_with_best_incentive',
+          severity: 'error'
+        });
+      }
+
+      if (execMode === 'top_n_with_best_incentive' && !intent.preferences?.execution?.show_top_n) {
+        warnings.push('top_n_with_best_incentive mode should specify show_top_n');
+      }
     }
   }
 

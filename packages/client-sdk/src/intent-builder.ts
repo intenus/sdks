@@ -3,15 +3,14 @@ import type { Intent } from '@intenus/common';
 /**
  * Fluent API for building IGS intents
  * Provides a convenient way to construct Intent objects with proper validation
+ * Note: intent_id and user_address are derived from on-chain IGSObject
  */
 export class IntentBuilder {
   private intent: Intent;
-  
-  constructor(userAddress: string) {
+
+  constructor() {
     this.intent = {
       igs_version: '1.0.0',
-      intent_id: crypto.randomUUID(),
-      user_address: userAddress,
       created_at: Date.now(),
       intent_type: 'swap.exact_input',
       description: '',
@@ -45,7 +44,7 @@ export class IntentBuilder {
           reputation_weight: 10,
         },
         execution: {
-          auto_execute: false,
+          mode: 'top_n_with_best_incentive',
           show_top_n: 3,
           require_simulation: true,
         },

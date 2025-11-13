@@ -1,6 +1,7 @@
 // IGS (Intenus General Standard) - Primary Intent Types
 export type {
   IGSIntent as Intent, // Alias for backward compatibility
+  IGSObject, // On-chain IGS object
   IGSIntentType,
   IGSOperation,
   IGSAssetFlow as AssetSpec, // Alias for backward compatibility
@@ -8,12 +9,16 @@ export type {
   IGSExpectedOutcome,
   IGSConstraints as Constraints, // Alias for backward compatibility
   IGSPreferences as ExecutionPreferences, // Alias for backward compatibility
+  IGSExecutionMode, // New execution mode type
   IGSTiming,
   IGSMetadata as IntentMetadata, // Alias for backward compatibility
   IGSSolution,
+  IGSSimulationResult, // Sui dry run simulation result
   IGSRankedSolution,
   IGSValidationResult,
   IGSValidationError,
+  IGSPreRankingResult, // PreRankingEngine result
+  IGSRankingResult, // RankingEngine result
 } from './igs.js';
 
 // Batch types

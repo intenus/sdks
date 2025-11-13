@@ -5,11 +5,12 @@ describe('IntentBuilder', () => {
   const userAddress = '0x1234567890abcdef';
 
   it('should build basic swap intent', () => {
-    const intent = new IntentBuilder(userAddress)
+    const intent = new IntentBuilder()
       .swap('0x2::sui::SUI', '1000000', '0x...::usdc::USDC', 50)
       .build();
 
-    expect(intent.user_address).toBe(userAddress);
+    // Note: user_address is now derived from on-chain IGSObject owner
+    // expect(intent.user_address).toBe(userAddress);
     expect(intent.category).toBe('swap');
     expect(intent.action.type).toBe('swap_exact_in');
     expect(intent.action.params.slippageBps).toBe(50);
@@ -22,7 +23,7 @@ describe('IntentBuilder', () => {
   });
 
   it('should set privacy level', () => {
-    const intent = new IntentBuilder(userAddress)
+    const intent = new IntentBuilder()
       .swap('0x2::sui::SUI', '1000000', '0x...::usdc::USDC')
       .private(true)
       .build();
@@ -77,24 +78,25 @@ describe('IntentBuilder', () => {
 
   it('should throw error when building without required fields', () => {
     expect(() => {
-      new IntentBuilder(userAddress).build();
+      new IntentBuilder().build();
     }).toThrow('Category is required');
   });
 
-  it('should generate unique intent IDs', () => {
-    const intent1 = new IntentBuilder(userAddress)
-      .swap('0x2::sui::SUI', '1000000', '0x...::usdc::USDC')
-      .build();
+  // Note: intent_id is now derived from on-chain IGSObject, not generated client-side
+  // it('should generate unique intent IDs', () => {
+  //   const intent1 = new IntentBuilder()
+  //     .swap('0x2::sui::SUI', '1000000', '0x...::usdc::USDC')
+  //     .build();
 
-    const intent2 = new IntentBuilder(userAddress)
-      .swap('0x2::sui::SUI', '1000000', '0x...::usdc::USDC')
-      .build();
+  //   const intent2 = new IntentBuilder()
+  //     .swap('0x2::sui::SUI', '1000000', '0x...::usdc::USDC')
+  //     .build();
 
-    expect(intent1.intent_id).not.toBe(intent2.intent_id);
-  });
+  //   expect(intent1.intent_id).not.toBe(intent2.intent_id);
+  // });
 
   it('should set default values correctly', () => {
-    const intent = new IntentBuilder(userAddress)
+    const intent = new IntentBuilder()
       .swap('0x2::sui::SUI', '1000000', '0x...::usdc::USDC')
       .build();
 

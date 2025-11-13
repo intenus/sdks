@@ -36,7 +36,9 @@ export class WalrusIntentHelper {
       : JSON.stringify(intent);
     
     // Store to temporary location (backend will move to batch)
-    const path = `/intents/pending/${intent.intent_id}.json`;
+    // Use timestamp + random for pending intents (no intent_id yet until on-chain)
+    const tempId = `${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+    const path = `/intents/pending/${tempId}.json`;
     return this.walrusClient.storeRaw(
       path,
       Buffer.from(intentData),

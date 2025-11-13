@@ -17,6 +17,7 @@ export interface IGSSolutionBuilderOptions {
   solver_address: string;
   reputation_score?: number;
   enable_simulation?: boolean;
+  intent_id: string; // Intent ID from on-chain IGSObject
 }
 
 export class IGSSolutionBuilder {
@@ -145,12 +146,12 @@ export class IGSSolutionBuilder {
 
     const solution: IGSSolution = {
       solution_id: crypto.randomUUID(),
-      intent_id: this.intent.intent_id,
+      intent_id: this.options.intent_id,
       solver_address: this.options.solver_address,
       submitted_at: Date.now(),
 
       ptb_bytes: Array.from(ptbBytes).map(b => b.toString(16).padStart(2, '0')).join(''),
-      ptb_hash: ptbHash,
+      ptb_digest: ptbHash,
 
       promised_outputs: this.promised_outputs,
 
@@ -341,8 +342,9 @@ export function createIGSSolutionBuilder(
  * Validate IGS solution compliance
  */
 export function validateIGSSolution(
-  intent: IGSIntent, 
-  solution: IGSSolution
+  intent: IGSIntent,
+  solution: IGSSolution,
+  intent_id: string
 ): {
   compliant: boolean;
   score: number;
@@ -352,7 +354,7 @@ export function validateIGSSolution(
   let score = 100;
 
   // Check basic fields
-  if (solution.intent_id !== intent.intent_id) {
+  if (solution.intent_id !== intent_id) {
     issues.push('Intent ID mismatch');
     score -= 25;
   }
