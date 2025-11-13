@@ -13,7 +13,6 @@ import {
   SlashManagerService
 } from './services/index.js';
 import type { IntenusClientConfig, IntenusClientError } from './types.js';
-
 export class IntenusProtocolClient {
   public readonly suiClient: SuiClient;
   private config: IntenusClientConfig;

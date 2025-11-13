@@ -7,7 +7,9 @@
 
 ## Summary
 
-The **Intenus General Standard (IGS)** is an open standard for describing intents in DeFi in a measurable and comparable way. The IGS v1.0 MVP focuses on swaps and limit orders with AI-powered ranking.
+The **Intenus General Standard (IGS)** is an open standard for describing intents in DeFi in a measurable and comparable way. IGS provides a universal format for expressing user intents, calculating surplus, and enabling AI-powered solution ranking.
+
+The IGS v1.0 MVP focuses on swaps and limit orders with standardized surplus calculation and AI ranking methodology.
 
 ## Motivation
 
@@ -43,7 +45,6 @@ interface IGSIntent {
   igs_version: '1.0.0';
   intent_id: string;
   user_address: string;
-  created_at: number;
 
   // CLASSIFICATION  
   intent_type: IGSIntentType;
@@ -58,13 +59,12 @@ interface IGSIntent {
   // PREFERENCES (SHOULD be optimized)
   preferences: IGSPreferences;
 
-  // TIMING
-  timing: IGSTiming;
-
   // METADATA
   metadata: IGSMetadata;
 }
 ```
+
+**Design Philosophy:** IGS is protocol-agnostic. It describes **what** the user wants, not **how** it will be executed or enforced. Implementation details like timing windows, access control, and validation are handled by the execution layer.
 
 ### 2. Operation - The Heart of IGS
 
@@ -120,6 +120,8 @@ The **Expected Value** is derived from:
 ```json
 {
   "igs_version": "1.0.0",
+  "intent_id": "intent_swap_abc123",
+  "user_address": "0x1234...abcd",
   "intent_type": "swap.exact_input",
   "description": "Swap 100 SUI to USDC",
   "operation": {
@@ -138,13 +140,33 @@ The **Expected Value** is derived from:
     "expected_outcome": {
       "expected_outputs": [{"asset_id": "0x...::usdc::USDC", "amount": "300000000"}],
       "expected_costs": {"gas_estimate": "0.01", "slippage_estimate": "1.50"},
-      "benchmark": {"source": "dex_aggregator", "confidence": 0.95}
+      "benchmark": {"source": "dex_aggregator", "timestamp": 1699123456000, "confidence": 0.95}
     }
   },
   "constraints": {
-    "deadline": 1699123456789,
     "max_slippage_bps": 50,
     "min_outputs": [{"asset_id": "0x...::usdc::USDC", "amount": "298500000"}]
+  },
+  "preferences": {
+    "optimization_goal": "balanced",
+    "ranking_weights": {
+      "surplus_weight": 50,
+      "gas_cost_weight": 25,
+      "execution_speed_weight": 15,
+      "reputation_weight": 10
+    },
+    "execution": {
+      "auto_execute": false,
+      "show_top_n": 3,
+      "require_simulation": true
+    }
+  },
+  "metadata": {
+    "client": {
+      "name": "Intenus Web",
+      "version": "1.0.0",
+      "platform": "browser"
+    }
   }
 }
 ```
@@ -153,28 +175,55 @@ The **Expected Value** is derived from:
 
 ```json
 {
-  "igs_version": "1.0.0", 
+  "igs_version": "1.0.0",
+  "intent_id": "intent_limit_xyz789",
+  "user_address": "0x5678...efgh",
   "intent_type": "limit.sell",
-  "description": "Sell 1000 SUI at a $3.50 limit",
+  "description": "Sell 1000 SUI at $3.50 limit",
   "operation": {
     "mode": "limit_order",
     "inputs": [{
       "asset_id": "0x2::sui::SUI",
+      "asset_info": {"symbol": "SUI", "decimals": 9},
       "amount": {"type": "exact", "value": "1000000000000"}
     }],
     "outputs": [{
       "asset_id": "0x...::usdc::USDC",
+      "asset_info": {"symbol": "USDC", "decimals": 6},
       "amount": {"type": "range", "min": "3500000000", "max": "3600000000"}
     }],
     "expected_outcome": {
+      "expected_outputs": [{"asset_id": "0x...::usdc::USDC", "amount": "3500000000"}],
+      "expected_costs": {"gas_estimate": "0.02"},
+      "benchmark": {"source": "manual", "timestamp": 1699123456000, "confidence": 1.0},
       "market_price": {"price": "3.20", "price_asset": "0x...::usdc::USDC"}
     }
   },
   "constraints": {
+    "max_slippage_bps": 100,
+    "min_outputs": [{"asset_id": "0x...::usdc::USDC", "amount": "3500000000"}],
     "limit_price": {"price": "3.50", "comparison": "gte", "price_asset": "0x...::usdc::USDC"}
   },
-  "timing": {
-    "execution": {"time_in_force": "good_til_cancel"}
+  "preferences": {
+    "optimization_goal": "maximize_output",
+    "ranking_weights": {
+      "surplus_weight": 60,
+      "gas_cost_weight": 20,
+      "execution_speed_weight": 10,
+      "reputation_weight": 10
+    },
+    "execution": {
+      "auto_execute": true,
+      "show_top_n": 1,
+      "require_simulation": false
+    }
+  },
+  "metadata": {
+    "client": {
+      "name": "Intenus Mobile",
+      "version": "1.0.0",
+      "platform": "ios"
+    }
   }
 }
 ```
@@ -211,24 +260,39 @@ interface IGSSolution {
   solution_id: string;
   intent_id: string;
   solver_address: string;
+  submitted_at: number;
   
-  // Execution
-  ptb_bytes: string;
-  ptb_hash: string;
-  
-  // Outcomes
-  promised_outputs: Array<{asset_id: string, amount: string}>;
-  estimated_gas: string;
-  
-  // Surplus calculation
-  surplus_calculation: {
-    benchmark_value_usd: string;
-    solution_value_usd: string; 
-    surplus_usd: string;
-    surplus_percentage: string;
+  // Execution details
+  execution: {
+    transaction_bytes: string;    // Serialized transaction
+    transaction_hash: string;     // Hash for verification
+    estimated_gas: string;        // Gas cost estimate
   };
   
-  compliance_score: number;
+  // Promised outcomes
+  promised_outputs: Array<{
+    asset_id: string;
+    amount: string;
+  }>;
+  
+  // Surplus calculation (the key metric)
+  surplus_calculation: {
+    benchmark_value_usd: string;  // From intent's expected_outcome
+    solution_value_usd: string;   // Solver's promised value
+    surplus_usd: string;          // Difference (solution - benchmark)
+    surplus_percentage: string;   // Percentage improvement
+  };
+  
+  // Strategy information
+  strategy_summary: {
+    protocols_used: string[];     // DEXs, aggregators used
+    total_hops: number;           // Number of swaps
+    execution_path: string;       // Human-readable path
+  };
+  
+  // IGS compliance
+  compliance_score: number;       // 0-100, how well it follows IGS
+  compliance_details?: string[];  // Any warnings or issues
 }
 ```
 
@@ -290,19 +354,40 @@ interface IGSRankedSolution {
 2. **Show Rankings**: Display the top N solutions with explanations.
 3. **User Choice**: Allow auto-execution or manual selection.
 
-## Security Considerations
+## IGS Ecosystem Integration
 
-### Intent Privacy
+IGS is designed to be protocol-agnostic and can be integrated with various execution layers:
 
-- **Public**: For basic swap intents.
-- **Encrypted**: For large orders or sensitive strategies.
-- **Anonymous**: For privacy-focused execution.
+### Storage and Privacy
 
-### Solution Verification
+- **Storage**: IGS intents can be stored on-chain, off-chain (e.g., Walrus), or in private databases
+- **Privacy**: Support for encryption (e.g., Seal) when handling sensitive intents
+- **Compression**: JSON format allows for easy compression and efficient transmission
 
-- **Simulation**: Test the PTB before execution.
-- **TEE Attestation**: Use a trusted execution environment.
-- **Compliance Check**: Perform IGS validation.
+### Execution Layer Integration
+
+The execution layer (protocol-specific) handles:
+- **Timing**: Deadlines, solver windows, batch coordination
+- **Access Control**: Who can see/solve which intents
+- **Validation**: Transaction simulation and verification
+- **Settlement**: Actual execution on blockchain
+
+IGS provides the **data format**, execution layers provide the **enforcement**.
+
+### Multi-Protocol Support
+
+```typescript
+// IGS intent can target any blockchain
+interface IGSIntent {
+  // ... standard IGS fields ...
+  target_chain?: string;      // Optional: 'sui', 'ethereum', 'solana'
+  cross_chain?: {             // Optional: for cross-chain intents
+    source_chain: string;
+    dest_chain: string;
+    bridge_preferences: string[];
+  };
+}
+```
 
 ## Future Extensions (Post-MVP)
 
@@ -331,20 +416,47 @@ interface IGSRankedSolution {
 
 IGS v1.0 provides a solid foundation for intent-based DeFi:
 
-✅ **Standardized**: A common format for the entire ecosystem.
-✅ **Measurable**: Accurate surplus calculation.
-✅ **AI-friendly**: Rich context for ranking.
-✅ **Extensible**: Easy to extend for future features.
-✅ **Hackathon-ready**: Simple enough for rapid implementation.
+✅ **Universal**: A common format that works across any protocol or blockchain
+✅ **Measurable**: Standardized surplus calculation for comparing solutions
+✅ **AI-friendly**: Rich context enables intelligent solution ranking
+✅ **Self-describing**: All information needed to understand and solve the intent
+✅ **Extensible**: Easy to add new intent types and features
+✅ **Protocol-agnostic**: Separates intent description from execution enforcement
+
+### Core Principles
+
+1. **Format, not enforcement**: IGS describes intents; execution layers enforce them
+2. **Surplus-driven**: Everything revolves around measurable value creation
+3. **AI-first**: Designed for machine learning and automated reasoning
+4. **Human-readable**: JSON format that both humans and machines understand
+5. **Composable**: Intents can be combined, split, or transformed
+
+### Adoption Path
+
+**For Protocols**:
+1. Adopt IGS as your intent format
+2. Implement your own execution layer (timing, validation, settlement)
+3. Benefit from ecosystem tools (AI routers, solvers, frontends)
+
+**For Solvers**:
+1. Parse IGS intents
+2. Generate IGS-compliant solutions
+3. Calculate and report surplus accurately
+
+**For Frontends**:
+1. Generate IGS intents from user input
+2. Display solutions with standardized surplus metrics
+3. Support multiple protocols with one format
 
 **Next Steps:**
 
 1. Implement IGS types ✅
 2. Create JSON Schema validation ✅
-3. Update solver-sdk support ✅
-4. Test with real use cases
-5. Gather feedback from the community
+3. Test with real use cases
+4. Gather feedback from the community
+5. Expand to v1.1 operations (lending, staking, etc.)
+6. Cross-chain intent support
 
 ---
 
-*IGS v1.0 - "Making Intent-based DeFi Measurable and Transparent"*
+*IGS v1.0 - "Making Intent-based DeFi Measurable and Universal"*

@@ -2,19 +2,17 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://intenus.org/schemas/igs/v1.0.0",
   "title": "Intenus General Standard (IGS) v1.0",
-  "description": "Universal standard for DeFi intents with AI ranking",
+  "description": "Universal, protocol-agnostic standard for DeFi intents with measurable surplus and AI ranking.",
   "type": "object",
   "required": [
     "igs_version",
     "intent_id", 
     "user_address",
-    "created_at",
     "intent_type",
     "description",
     "operation",
     "constraints",
     "preferences",
-    "timing",
     "metadata"
   ],
   "properties": {
@@ -35,11 +33,6 @@
           "pattern": "^0x[a-fA-F0-9]{1,64}$",
           "description": "User address"
         },
-    "created_at": {
-      "type": "number",
-      "minimum": 0,
-      "description": "Creation timestamp (Unix ms)"
-    },
     "intent_type": {
       "type": "string",
       "enum": [
@@ -65,14 +58,11 @@
     "preferences": {
       "$ref": "#/$defs/IGSPreferences"
     },
-    "timing": {
-      "$ref": "#/$defs/IGSTiming"
-    },
     "metadata": {
       "$ref": "#/$defs/IGSMetadata"
     }
   },
-  "additionalProperties": false,
+  "additionalProperties": true,
 
   "$defs": {
     "IGSOperation": {
@@ -270,13 +260,8 @@
 
     "IGSConstraints": {
       "type": "object",
-      "required": ["deadline", "max_slippage_bps", "min_outputs"],
+      "required": ["max_slippage_bps", "min_outputs"],
       "properties": {
-        "deadline": {
-          "type": "number",
-          "minimum": 0,
-          "description": "Hard deadline (Unix timestamp ms)"
-        },
         "max_slippage_bps": {
           "type": "number",
           "minimum": 0,
@@ -404,62 +389,6 @@
           "properties": {
             "encrypt_intent": {"type": "boolean"},
             "anonymous_execution": {"type": "boolean"}
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-
-    "IGSTiming": {
-      "type": "object",
-      "required": ["absolute_deadline", "solver_window_ms", "user_decision_timeout_ms", "batch"],
-      "properties": {
-        "absolute_deadline": {
-          "type": "number",
-          "minimum": 0
-        },
-        "solver_window_ms": {
-          "type": "number",
-          "minimum": 1000,
-          "maximum": 300000
-        },
-        "user_decision_timeout_ms": {
-          "type": "number",
-          "minimum": 5000,
-          "maximum": 3600000
-        },
-        "batch": {
-          "type": "object",
-          "required": ["batch_id", "batch_epoch", "batch_closes_at"],
-          "properties": {
-            "batch_id": {"type": "string"},
-            "batch_epoch": {
-              "type": "number",
-              "minimum": 0
-            },
-            "batch_closes_at": {
-              "type": "number",
-              "minimum": 0
-            }
-          },
-          "additionalProperties": false
-        },
-        "execution": {
-          "type": "object",
-          "properties": {
-            "time_in_force": {
-              "type": "string",
-              "enum": ["immediate", "good_til_cancel", "fill_or_kill"]
-            },
-            "earliest_execution": {
-              "type": "number",
-              "minimum": 0
-            },
-            "latest_execution": {
-              "type": "number",
-              "minimum": 0
-            }
           },
           "additionalProperties": false
         }
