@@ -2,29 +2,39 @@ import { describe, it, expect } from 'vitest';
 import { StoragePathBuilder } from '../src/utils/paths.js';
 
 describe('StoragePathBuilder', () => {
-  it('should build batch manifest path', () => {
-    const path = StoragePathBuilder.build('batchManifest', 123);
-    expect(path).toBe('/batches/123/batch_manifest.json');
+  it('should build intent path', () => {
+    const path = StoragePathBuilder.build('intent', 'intent_001');
+    expect(path).toBe('/intents/intent_001.json');
   });
 
-  it('should build batch archive path', () => {
-    const path = StoragePathBuilder.build('batchArchive', 123, 'batch_abc');
-    expect(path).toBe('/archives/123/batch_batch_abc.json');
+  it('should build solution path', () => {
+    const path = StoragePathBuilder.build('solution', 'sol_001');
+    expect(path).toBe('/solutions/sol_001.json');
   });
 
-  it('should build user history path', () => {
-    const path = StoragePathBuilder.build('userHistory', '0x123...');
-    expect(path).toBe('/users/0x123.../history_aggregated.json');
+  it('should build feedback path', () => {
+    const path = StoragePathBuilder.build('feedback', 'fb_001');
+    expect(path).toBe('/feedback/fb_001.json');
   });
 
-  it('should build dataset metadata path', () => {
-    const path = StoragePathBuilder.build('datasetMetadata', 'v1.0.0');
-    expect(path).toBe('/training/datasets/v1.0.0/dataset_metadata.json');
+  it('should build training sample path', () => {
+    const path = StoragePathBuilder.build('trainingSample', 'v1.0', 'sample_001');
+    expect(path).toBe('/training_data/v1.0/sample_001.json');
   });
 
   it('should build model metadata path', () => {
-    const path = StoragePathBuilder.build('modelMetadata', 'user_preference', 'v1.0.0');
-    expect(path).toBe('/training/models/user_preference/v1.0.0/model_metadata.json');
+    const path = StoragePathBuilder.build('modelMetadata', 'v1.0.0');
+    expect(path).toBe('/models/v1.0.0/metadata.json');
+  });
+
+  it('should build model weights path', () => {
+    const path = StoragePathBuilder.build('modelWeights', 'v1.0.0');
+    expect(path).toBe('/models/v1.0.0/weights.pkl');
+  });
+
+  it('should build model latest path', () => {
+    const path = StoragePathBuilder.build('modelLatest');
+    expect(path).toBe('/models/latest.json');
   });
 
   it('should throw error for unknown path type', () => {

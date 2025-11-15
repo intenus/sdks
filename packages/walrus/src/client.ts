@@ -8,25 +8,21 @@ import type { Signer } from "@mysten/sui/cryptography";
 import { NETWORKS } from "@intenus/common";
 import { StoragePathBuilder } from "./utils/paths.js";
 import {
-  BatchStorageService,
-  ArchiveStorageService,
-  UserStorageService,
-  TrainingStorageService,
+  IntentStorageService,
+  SolutionStorageService,
+  MLStorageService,
 } from "./services/index.js";
 import type { IntenusWalrusConfig, StorageResult } from "./types/index.js";
 import { WalrusStorageError, WalrusFetchError } from "./types/index.js";
-import { WalrusQueryBuilder } from "./query-builder.js";
 
 export class IntenusWalrusClient {
   public readonly walrusClient: WalrusClient;
   public readonly suiClient: SuiClient;
   private config: IntenusWalrusConfig;
 
-  public readonly batches: BatchStorageService;
-  public readonly archives: ArchiveStorageService;
-  public readonly users: UserStorageService;
-  public readonly training: TrainingStorageService;
-  public readonly query: WalrusQueryBuilder;
+  public readonly intents: IntentStorageService;
+  public readonly solutions: SolutionStorageService;
+  public readonly ml: MLStorageService;
 
   constructor(config: IntenusWalrusConfig) {
     const networkConfig =
@@ -64,11 +60,9 @@ export class IntenusWalrusClient {
     };
     this.walrusClient = new WalrusClient(walrusConfig);
 
-    this.batches = new BatchStorageService(this, StoragePathBuilder as any);
-    this.archives = new ArchiveStorageService(this, StoragePathBuilder as any);
-    this.users = new UserStorageService(this, StoragePathBuilder as any);
-    this.training = new TrainingStorageService(this);
-    this.query = new WalrusQueryBuilder(this);
+    this.intents = new IntentStorageService(this);
+    this.solutions = new SolutionStorageService(this);
+    this.ml = new MLStorageService(this);
   }
 
 
