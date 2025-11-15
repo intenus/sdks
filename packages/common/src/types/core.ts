@@ -2,19 +2,38 @@
  * ============================================================================
  * CORE TYPES - Common types for Intenus system
  * ============================================================================
- *
- * Three type systems working together:
- * 1. IGS (Intenus General Standard) - Intent and Solution schemas
- * 2. On-chain - Sui blockchain objects and references
- * 3. Core - Common types for PreRanking and Ranking engines
- *
- * Architecture:
- * - PreRankingEngine: Rule-based validation + Intent classification + Feature extraction
- * - RankingEngine: Strategy-based ranking using features and dry-run results
- * - All operations work with IDs; engines fetch full data as needed from contracts
  */
 
 import { IGSValidationError } from "./igs";
+/**
+ * ============================================================================
+ * INTENT
+ * ============================================================================
+ */
+export interface Intent {
+  id: string;
+  user_address: string;
+  created_ms: number;
+  blob_id: string;
+  policy: {
+    solver_access_window: {
+      start_ms: number;
+      end_ms: number;
+    };
+    auto_revoke_time: number;
+    access_condition: {
+      requires_solver_registration: boolean;
+      min_solver_stake: number;
+      requires_attestation: boolean;
+      expected_measurement: string[];
+      purpose: string[];
+    };
+  };
+  status: number;
+  best_solution_id: string;
+  pending_solutions: string[];
+}
+
 
 /**
  * ============================================================================
@@ -44,14 +63,6 @@ export interface SolutionSubmission {
 
 /**
  * Intent classifier result - deep analysis beyond intent.type
- *
- * NOTE: Classification strategy is TBD:
- * - Option 1: Rule-based (pattern matching on constraints, amounts, preferences)
- * - Option 2: Machine learning (trained on historical intent patterns)
- * - Current: Hybrid approach recommended (rules for MVP, ML for optimization)
- *
- * Purpose: Provides RankingEngine with context to choose appropriate ranking strategy
- * Example: intent.type='swap' but constraints indicate urgent execution vs price optimization
  */
 export interface IntentClassification {
   /** Primary intent category detected */

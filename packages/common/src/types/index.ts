@@ -25,16 +25,6 @@ export type {
   RankingResult,
 } from './core.js';
 
-// Solution types
-export type {
-  SolutionOutcome,
-  StrategySummary,
-  TEEAttestation,
-  RankedPTB,
-  ExpectedOutcome,
-  ExecutionSummary,
-  Explanation,
-} from './solution.js';
 
 // ML Dataset types
 export type {
