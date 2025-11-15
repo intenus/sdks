@@ -1,0 +1,217 @@
+/**
+ * ============================================================================
+ * CORE TYPES - Common types for Intenus system
+ * ============================================================================
+ *
+ * Three type systems working together:
+ * 1. IGS (Intenus General Standard) - Intent and Solution schemas
+ * 2. On-chain - Sui blockchain objects and references
+ * 3. Core - Common types for PreRanking and Ranking engines
+ *
+ * Architecture:
+ * - PreRankingEngine: Rule-based validation + Intent classification + Feature extraction
+ * - RankingEngine: Strategy-based ranking using features and dry-run results
+ * - All operations work with IDs; engines fetch full data as needed from contracts
+ */
+
+import { IGSExecutionMode, IGSValidationError } from "./igs";
+
+/**
+ * ============================================================================
+ * SOLUTION SUBMISSION
+ * ============================================================================
+ */
+
+/** Solution submitted by solver (on-chain reference) */
+export interface SolutionSubmission {
+  /** Unique solution ID (from on-chain object) */
+  solution_id: string;
+  /** Intent ID this solution is for */
+  intent_id: string;
+  /** Solver's address */
+  solver_address: string;
+  /** Submission timestamp */
+  submitted_at: number;
+  /** PTB transaction bytes reference (fetched from on-chain when needed) */
+  transaction_bytes_ref?: string;
+}
+
+/** Alias for backward compatibility */
+export type Solution = SolutionSubmission;
+
+/**
+ * ============================================================================
+ * INTENT CLASSIFICATION
+ * ============================================================================
+ */
+
+/**
+ * Intent classifier result - deep analysis beyond intent.type
+ *
+ * NOTE: Classification strategy is TBD:
+ * - Option 1: Rule-based (pattern matching on constraints, amounts, preferences)
+ * - Option 2: Machine learning (trained on historical intent patterns)
+ * - Current: Hybrid approach recommended (rules for MVP, ML for optimization)
+ *
+ * Purpose: Provides RankingEngine with context to choose appropriate ranking strategy
+ * Example: intent.type='swap' but constraints indicate urgent execution vs price optimization
+ */
+export interface IntentClassification {
+  /** Primary intent category detected */
+  primary_category: 'swap' | 'limit_order' | 'complex_defi' | 'arbitrage' | 'other';
+  /** Sub-category for fine-grained classification */
+  sub_category?: string;
+  /** User priority detected from constraints and preferences */
+  detected_priority: 'speed' | 'cost' | 'output' | 'balanced';
+  /** Complexity level based on constraints and routing */
+  complexity_level: 'simple' | 'moderate' | 'complex';
+  /** Risk level assessment */
+  risk_level: 'low' | 'medium' | 'high';
+  /** Confidence in classification (0-1) */
+  confidence: number;
+  /** Classification metadata */
+  metadata: {
+    /** Classification method used */
+    method: 'rule_based' | 'ml_model' | 'hybrid';
+    /** Model version (if ML used) */
+    model_version?: string;
+    /** Features used in classification */
+    features_used?: string[];
+  };
+}
+
+/**
+ * ============================================================================
+ * PRE-RANKING ENGINE
+ * ============================================================================
+ */
+
+/** PreRanking result - validation, classification, and feature extraction */
+export interface PreRankingResult {
+  /** Intent ID being processed */
+  intent_id: string;
+
+  /** Intent classification result */
+  intent_classification: IntentClassification;
+
+  /** Solution IDs that passed validation */
+  passed_solution_ids: string[];
+
+  /** Solution IDs that failed with reasons */
+  failed_solution_ids: Array<{
+    solution_id: string;
+    failure_reason: string;
+    errors: IGSValidationError[];
+  }>;
+
+  /** Feature vectors for passed solutions (for ranking) */
+  feature_vectors: Array<{
+    solution_id: string;
+    features: {
+      /** Surplus metrics */
+      surplus_usd: number;
+      surplus_percentage: number;
+      /** Cost metrics */
+      gas_cost: number;
+      protocol_fees: number;
+      total_cost: number;
+      /** Complexity metrics */
+      total_hops: number;
+      protocols_count: number;
+      /** Execution metrics */
+      estimated_execution_time?: number;
+      /** Solver reputation */
+      solver_reputation_score?: number;
+      solver_success_rate?: number;
+    };
+  }>;
+
+  /** Dry-run simulation results (raw data from Sui simulation) */
+  dry_run_results: Array<{
+    solution_id: string;
+    result: any; // Raw simulation result, structure TBD by simulation service
+  }>;
+
+  /** Processing statistics */
+  stats: {
+    total_submitted: number;
+    passed: number;
+    failed: number;
+    dry_run_executed: number;
+    dry_run_successful: number;
+  };
+
+  /** Processing timestamp */
+  processed_at: number;
+}
+
+/**
+ * ============================================================================
+ * RANKING ENGINE
+ * ============================================================================
+ */
+
+/** Ranked solution with scoring and explanation */
+export interface RankedSolution {
+  /** Ranking position (1 = best) */
+  rank: number;
+  /** Overall score (0-100) */
+  score: number;
+  /** Solution ID (reference to on-chain submission) */
+  solution_id: string;
+  /** Solver address */
+  solver_address: string;
+  /** Detailed scoring breakdown */
+  score_breakdown: {
+    surplus_score: number;
+    cost_score: number;
+    speed_score: number;
+    reputation_score: number;
+  };
+  /** Explanation and reasoning */
+  reasoning: {
+    primary_reason: string;
+    secondary_reasons: string[];
+    risk_assessment: 'low' | 'medium' | 'high';
+    confidence_level: number;
+  };
+  /** Personalization applied */
+  personalization_applied: boolean;
+  user_fit_score?: number;
+  /** Warnings about this solution */
+  warnings: string[];
+  /** Ranking expiration timestamp */
+  expires_at: number;
+}
+
+/** Ranking engine result - final ranked solutions */
+export interface RankingResult {
+  /** Intent ID this ranking is for */
+  intent_id: string;
+  /** Execution mode used */
+  mode: IGSExecutionMode;
+  /** Ranked solutions (1 for best_solution, N for top_n_with_best_incentive) */
+  ranked_solutions: RankedSolution[];
+  /**
+   * Best solution (always receives incentive/fee)
+   * Even in top_n mode, only this solution gets the reward
+   */
+  best_solution: RankedSolution;
+  /** Ranking metadata */
+  metadata: {
+    /** Total solutions considered */
+    total_solutions: number;
+    /** Average score across all solutions */
+    average_score: number;
+    /** Ranking strategy used (based on intent classification) */
+    strategy: string;
+    /** Strategy version/identifier */
+    strategy_version: string;
+    /** Intent classification that determined strategy */
+    intent_category: string;
+  };
+  /** Ranking timestamp */
+  ranked_at: number;
+  /** Ranking expiration timestamp */
+  expires_at: number;
+}
