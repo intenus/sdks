@@ -19,10 +19,9 @@ export type * from './types/index.js';
 
 // Services
 export type {
-  BatchStorageService,
-  ArchiveStorageService,
-  UserStorageService,
-  TrainingStorageService
+  IntentStorageService,
+  SolutionStorageService,
+  MLStorageService
 } from './services/index.js';
 
 // Utilities

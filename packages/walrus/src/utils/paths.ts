@@ -1,32 +1,29 @@
 /**
  * Storage path builder utility (Builder Pattern)
+ * Simplified for intent, solution, and ML data only
  */
 
 export class StoragePathBuilder {
   private static readonly PATHS = {
-    batchManifest: (epoch: number) => 
-      `/batches/${epoch}/batch_manifest.json`,
+    // Intent paths
+    intent: (intentId: string) => `/intents/${intentId}.json`,
     
-    batchArchive: (epoch: number, batchId: string) => 
-      `/archives/${epoch}/batch_${batchId}.json`,
+    // Solution paths
+    solution: (solutionId: string) => `/solutions/${solutionId}.json`,
     
-    userHistory: (address: string) => 
-      `/users/${address}/history_aggregated.json`,
+    // ML paths
+    feedback: (feedbackId: string) => `/feedback/${feedbackId}.json`,
     
-    datasetMetadata: (version: string) => 
-      `/training/datasets/${version}/dataset_metadata.json`,
+    trainingSample: (version: string, sampleId: string) => 
+      `/training_data/${version}/${sampleId}.json`,
     
-    datasetFeatures: (version: string) => 
-      `/training/datasets/${version}/features.parquet`,
+    modelMetadata: (version: string) => 
+      `/models/${version}/metadata.json`,
     
-    datasetLabels: (version: string) => 
-      `/training/datasets/${version}/labels.parquet`,
+    modelWeights: (version: string) => 
+      `/models/${version}/weights.pkl`,
     
-    modelMetadata: (name: string, version: string) => 
-      `/training/models/${name}/${version}/model_metadata.json`,
-    
-    modelFile: (name: string, version: string) => 
-      `/training/models/${name}/${version}/model.onnx`,
+    modelLatest: () => '/models/latest.json',
   } as const;
   
   static build(type: keyof typeof StoragePathBuilder.PATHS, ...args: any[]): string {
