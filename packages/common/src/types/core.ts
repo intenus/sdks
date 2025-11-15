@@ -14,7 +14,7 @@
  * - All operations work with IDs; engines fetch full data as needed from contracts
  */
 
-import { IGSExecutionMode, IGSValidationError } from "./igs";
+import { IGSValidationError } from "./igs";
 
 /**
  * ============================================================================
@@ -36,9 +36,6 @@ export interface SolutionSubmission {
   transaction_bytes_ref?: string;
 }
 
-/** Alias for backward compatibility */
-export type Solution = SolutionSubmission;
-
 /**
  * ============================================================================
  * INTENT CLASSIFICATION
@@ -58,21 +55,26 @@ export type Solution = SolutionSubmission;
  */
 export interface IntentClassification {
   /** Primary intent category detected */
-  primary_category: 'swap' | 'limit_order' | 'complex_defi' | 'arbitrage' | 'other';
+  primary_category:
+    | "swap"
+    | "limit_order"
+    | "complex_defi"
+    | "arbitrage"
+    | "other";
   /** Sub-category for fine-grained classification */
   sub_category?: string;
   /** User priority detected from constraints and preferences */
-  detected_priority: 'speed' | 'cost' | 'output' | 'balanced';
+  detected_priority: "speed" | "cost" | "output" | "balanced";
   /** Complexity level based on constraints and routing */
-  complexity_level: 'simple' | 'moderate' | 'complex';
+  complexity_level: "simple" | "moderate" | "complex";
   /** Risk level assessment */
-  risk_level: 'low' | 'medium' | 'high';
+  risk_level: "low" | "medium" | "high";
   /** Confidence in classification (0-1) */
   confidence: number;
   /** Classification metadata */
   metadata: {
     /** Classification method used */
-    method: 'rule_based' | 'ml_model' | 'hybrid';
+    method: "rule_based" | "ml_model" | "hybrid";
     /** Model version (if ML used) */
     model_version?: string;
     /** Features used in classification */
@@ -172,7 +174,7 @@ export interface RankedSolution {
   reasoning: {
     primary_reason: string;
     secondary_reasons: string[];
-    risk_assessment: 'low' | 'medium' | 'high';
+    risk_assessment: "low" | "medium" | "high";
     confidence_level: number;
   };
   /** Personalization applied */
@@ -188,8 +190,6 @@ export interface RankedSolution {
 export interface RankingResult {
   /** Intent ID this ranking is for */
   intent_id: string;
-  /** Execution mode used */
-  mode: IGSExecutionMode;
   /** Ranked solutions (1 for best_solution, N for top_n_with_best_incentive) */
   ranked_solutions: RankedSolution[];
   /**
