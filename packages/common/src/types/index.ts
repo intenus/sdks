@@ -16,18 +16,17 @@ export type {
   IGSValidationError,
 } from './igs.js';
 
-// Batch types
+// Core types (PreRanking and Ranking)
 export type {
-  Batch,
-  BatchManifest,
-  IntentReference,
-  BatchRequirements,
-} from './batch.js';
-export { BatchStatus } from './batch.js';
+  SolutionSubmission,
+  IntentClassification,
+  PreRankingResult,
+  RankedSolution,
+  RankingResult,
+} from './core.js';
 
 // Solution types
 export type {
-  SolutionSubmission,
   SolutionOutcome,
   StrategySummary,
   TEEAttestation,
@@ -37,19 +36,18 @@ export type {
   Explanation,
 } from './solution.js';
 
-// Walrus storage types
+// ML Dataset types
 export type {
-  BatchIntent,
-  BatchManifest as WalrusBatchManifest,
-  ArchivedSolution,
+  RawFeatures,
+  GroundTruthLabel,
+  LabelingMetadata,
   ExecutionOutcome,
-  MLFeatures,
-  BatchArchive,
-  UserHistoryAggregated,
+  IntentClassificationTrainingData,
+  ClassificationFeedback,
   TrainingDatasetMetadata,
   ModelMetadata,
-  StorageResult,
-} from './walrus.js';
+  ClassificationInference,
+} from './dataset.js';
 
 // Export IGS utilities and examples
 export {
