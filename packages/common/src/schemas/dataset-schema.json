@@ -1,0 +1,356 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://intenus.io/schemas/dataset.json",
+  "title": "Intenus ML Dataset Schema",
+  "description": "JSON Schema for ML training dataset types",
+  "definitions": {
+    "RawFeatures": {
+      "type": "object",
+      "description": "Raw features extracted from IGSIntent for ML training",
+      "required": [
+        "solver_window_ms",
+        "user_decision_timeout_ms",
+        "time_to_deadline_ms",
+        "max_slippage_bps",
+        "has_whitelist",
+        "has_blacklist",
+        "has_limit_price",
+        "optimization_goal",
+        "surplus_weight",
+        "gas_cost_weight",
+        "execution_speed_weight",
+        "reputation_weight",
+        "auto_execute",
+        "require_simulation",
+        "input_count",
+        "output_count",
+        "input_asset_types",
+        "output_asset_types",
+        "input_value_usd",
+        "expected_output_value_usd",
+        "benchmark_source",
+        "benchmark_confidence",
+        "expected_gas_usd",
+        "has_nlp_input",
+        "client_platform",
+        "tag_count"
+      ],
+      "properties": {
+        "solver_window_ms": { "type": "number" },
+        "user_decision_timeout_ms": { "type": "number" },
+        "time_to_deadline_ms": { "type": "number" },
+        "time_in_force": {
+          "type": "string",
+          "enum": ["immediate", "good_til_cancel", "fill_or_kill"]
+        },
+        "max_slippage_bps": { "type": "number" },
+        "max_gas_cost_usd": { "type": "number" },
+        "max_hops": { "type": "number" },
+        "has_whitelist": { "type": "boolean" },
+        "has_blacklist": { "type": "boolean" },
+        "has_limit_price": { "type": "boolean" },
+        "optimization_goal": {
+          "type": "string",
+          "enum": ["maximize_output", "minimize_gas", "fastest_execution", "balanced"]
+        },
+        "surplus_weight": { "type": "number", "minimum": 0, "maximum": 100 },
+        "gas_cost_weight": { "type": "number", "minimum": 0, "maximum": 100 },
+        "execution_speed_weight": { "type": "number", "minimum": 0, "maximum": 100 },
+        "reputation_weight": { "type": "number", "minimum": 0, "maximum": 100 },
+        "auto_execute": { "type": "boolean" },
+        "require_simulation": { "type": "boolean" },
+        "input_count": { "type": "number" },
+        "output_count": { "type": "number" },
+        "input_asset_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["native", "stable", "volatile"]
+          }
+        },
+        "output_asset_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["native", "stable", "volatile"]
+          }
+        },
+        "input_value_usd": { "type": "number" },
+        "expected_output_value_usd": { "type": "number" },
+        "benchmark_source": { "type": "string" },
+        "benchmark_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "expected_gas_usd": { "type": "number" },
+        "expected_slippage_bps": { "type": "number" },
+        "has_nlp_input": { "type": "boolean" },
+        "nlp_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "client_platform": { "type": "string" },
+        "tag_count": { "type": "number" }
+      }
+    },
+    "GroundTruthLabel": {
+      "type": "object",
+      "description": "Ground truth classification labels",
+      "required": ["primary_category", "sub_category", "detected_priority", "complexity_level", "risk_level"],
+      "properties": {
+        "primary_category": {
+          "type": "string",
+          "enum": ["swap", "limit_order", "complex_defi", "arbitrage", "other"]
+        },
+        "sub_category": { "type": "string" },
+        "detected_priority": {
+          "type": "string",
+          "enum": ["speed", "cost", "output", "balanced"]
+        },
+        "complexity_level": {
+          "type": "string",
+          "enum": ["simple", "moderate", "complex"]
+        },
+        "risk_level": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        }
+      }
+    },
+    "LabelingMetadata": {
+      "type": "object",
+      "description": "Labeling metadata",
+      "required": ["labeling_method", "labeled_by", "labeled_at", "label_confidence"],
+      "properties": {
+        "labeling_method": {
+          "type": "string",
+          "enum": ["expert_manual", "rule_based", "outcome_based", "user_feedback", "synthetic"]
+        },
+        "labeled_by": { "type": "string" },
+        "labeled_at": { "type": "number" },
+        "label_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "notes": { "type": "string" }
+      }
+    },
+    "ExecutionOutcome": {
+      "type": "object",
+      "description": "Execution outcome for feedback loop",
+      "required": ["executed"],
+      "properties": {
+        "executed": { "type": "boolean" },
+        "chosen_solution_rank": { "type": "number" },
+        "chosen_solution_id": { "type": "string" },
+        "actual_metrics": {
+          "type": "object",
+          "required": ["actual_output_usd", "actual_gas_cost_usd", "actual_execution_time_ms", "actual_slippage_bps"],
+          "properties": {
+            "actual_output_usd": { "type": "number" },
+            "actual_gas_cost_usd": { "type": "number" },
+            "actual_execution_time_ms": { "type": "number" },
+            "actual_slippage_bps": { "type": "number" }
+          }
+        },
+        "user_satisfaction": {
+          "type": "number",
+          "enum": [1, 2, 3, 4, 5]
+        },
+        "executed_at": { "type": "number" }
+      }
+    },
+    "IntentClassificationTrainingData": {
+      "type": "object",
+      "description": "Complete training sample for intent classification",
+      "required": ["sample_id", "intent_metadata", "raw_features", "ground_truth", "label_info", "dataset_version", "created_at"],
+      "properties": {
+        "sample_id": { "type": "string" },
+        "intent_metadata": {
+          "type": "object",
+          "required": ["intent_id", "intent_type", "created_at"],
+          "properties": {
+            "intent_id": { "type": "string" },
+            "intent_type": { "type": "string" },
+            "created_at": { "type": "number" }
+          }
+        },
+        "raw_features": { "$ref": "#/definitions/RawFeatures" },
+        "ground_truth": { "$ref": "#/definitions/GroundTruthLabel" },
+        "label_info": { "$ref": "#/definitions/LabelingMetadata" },
+        "execution_outcome": { "$ref": "#/definitions/ExecutionOutcome" },
+        "dataset_version": { "type": "string" },
+        "created_at": { "type": "number" },
+        "full_intent_ref": { "type": "string" }
+      }
+    },
+    "ClassificationFeedback": {
+      "type": "object",
+      "description": "Feedback for continuous learning",
+      "required": ["feedback_id", "intent_id", "predicted_classification", "actual_outcome", "feedback_source", "created_at"],
+      "properties": {
+        "feedback_id": { "type": "string" },
+        "intent_id": { "type": "string" },
+        "predicted_classification": {
+          "type": "object",
+          "required": ["primary_category", "detected_priority", "complexity_level", "risk_level", "confidence", "model_version"],
+          "properties": {
+            "primary_category": { "type": "string" },
+            "sub_category": { "type": "string" },
+            "detected_priority": { "type": "string" },
+            "complexity_level": { "type": "string" },
+            "risk_level": { "type": "string" },
+            "confidence": { "type": "number" },
+            "model_version": { "type": "string" }
+          }
+        },
+        "actual_outcome": { "$ref": "#/definitions/ExecutionOutcome" },
+        "best_strategy": { "type": "string" },
+        "corrected_classification": { "$ref": "#/definitions/GroundTruthLabel" },
+        "feedback_source": {
+          "type": "string",
+          "enum": ["execution_outcome", "user_explicit", "expert_review"]
+        },
+        "created_at": { "type": "number" }
+      }
+    },
+    "TrainingDatasetMetadata": {
+      "type": "object",
+      "description": "Training dataset composition and metadata",
+      "required": ["dataset_id", "version", "composition", "freshness", "quality", "class_distribution", "created_at", "updated_at"],
+      "properties": {
+        "dataset_id": { "type": "string" },
+        "version": { "type": "string" },
+        "composition": {
+          "type": "object",
+          "required": ["synthetic_samples", "production_samples", "expert_samples", "total_samples"],
+          "properties": {
+            "synthetic_samples": { "type": "number" },
+            "production_samples": { "type": "number" },
+            "expert_samples": { "type": "number" },
+            "total_samples": { "type": "number" }
+          }
+        },
+        "freshness": {
+          "type": "object",
+          "required": ["samples_last_7_days", "samples_last_30_days", "samples_last_90_days"],
+          "properties": {
+            "samples_last_7_days": { "type": "number" },
+            "samples_last_30_days": { "type": "number" },
+            "samples_last_90_days": { "type": "number" }
+          }
+        },
+        "quality": {
+          "type": "object",
+          "required": ["high_confidence", "medium_confidence", "low_confidence"],
+          "properties": {
+            "high_confidence": { "type": "number" },
+            "medium_confidence": { "type": "number" },
+            "low_confidence": { "type": "number" }
+          }
+        },
+        "class_distribution": {
+          "type": "object",
+          "required": ["swap", "limit_order", "complex_defi", "arbitrage", "other"],
+          "properties": {
+            "swap": { "type": "number" },
+            "limit_order": { "type": "number" },
+            "complex_defi": { "type": "number" },
+            "arbitrage": { "type": "number" },
+            "other": { "type": "number" }
+          }
+        },
+        "created_at": { "type": "number" },
+        "updated_at": { "type": "number" },
+        "walrus_blob_id": { "type": "string" }
+      }
+    },
+    "ModelMetadata": {
+      "type": "object",
+      "description": "ML model metadata",
+      "required": ["model_id", "model_version", "architecture", "training", "metrics", "feature_importance", "artifacts", "status"],
+      "properties": {
+        "model_id": { "type": "string" },
+        "model_version": { "type": "string" },
+        "architecture": {
+          "type": "object",
+          "required": ["type", "hyperparameters"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["random_forest", "xgboost", "neural_network", "ensemble"]
+            },
+            "hyperparameters": { "type": "object" }
+          }
+        },
+        "training": {
+          "type": "object",
+          "required": ["dataset_version", "training_samples", "validation_samples", "test_samples", "trained_at", "training_duration_ms"],
+          "properties": {
+            "dataset_version": { "type": "string" },
+            "training_samples": { "type": "number" },
+            "validation_samples": { "type": "number" },
+            "test_samples": { "type": "number" },
+            "trained_at": { "type": "number" },
+            "training_duration_ms": { "type": "number" }
+          }
+        },
+        "metrics": {
+          "type": "object",
+          "required": ["accuracy", "precision", "recall", "f1_score", "per_class_metrics"],
+          "properties": {
+            "accuracy": { "type": "number" },
+            "precision": { "type": "number" },
+            "recall": { "type": "number" },
+            "f1_score": { "type": "number" },
+            "per_class_metrics": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "required": ["precision", "recall", "f1", "support"],
+                "properties": {
+                  "precision": { "type": "number" },
+                  "recall": { "type": "number" },
+                  "f1": { "type": "number" },
+                  "support": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "feature_importance": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["feature_name", "importance", "rank"],
+            "properties": {
+              "feature_name": { "type": "string" },
+              "importance": { "type": "number" },
+              "rank": { "type": "number" }
+            }
+          }
+        },
+        "artifacts": {
+          "type": "object",
+          "required": ["model_weights_ref", "scaler_ref", "encoder_ref"],
+          "properties": {
+            "model_weights_ref": { "type": "string" },
+            "scaler_ref": { "type": "string" },
+            "encoder_ref": { "type": "string" }
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["training", "testing", "deployed", "deprecated"]
+        },
+        "deployed_at": { "type": "number" },
+        "deprecated_at": { "type": "number" }
+      }
+    },
+    "ClassificationInference": {
+      "type": "object",
+      "description": "Model inference result (production usage)",
+      "required": ["intent_id", "model_version", "prediction", "confidence", "features", "inferred_at", "latency_ms"],
+      "properties": {
+        "intent_id": { "type": "string" },
+        "model_version": { "type": "string" },
+        "prediction": { "$ref": "#/definitions/GroundTruthLabel" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "features": { "$ref": "#/definitions/RawFeatures" },
+        "inferred_at": { "type": "number" },
+        "latency_ms": { "type": "number" }
+      }
+    }
+  }
+}
