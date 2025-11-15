@@ -1,75 +1,42 @@
-import type { SolutionSubmission, SolutionOutcome } from '@intenus/common';
+import type { SolutionSubmission } from '@intenus/common';
 import { Transaction } from '@mysten/sui/transactions';
+import { Buffer } from 'node:buffer';
 
 /**
- * OPTIONAL: Helper for building solution submissions
- * Solvers can build PTBs manually using Sui SDK if preferred
+ * Light-weight helper for building the minimal IGSSolution payload.
+ * If you need more control, interact with the Sui SDK directly.
  */
 export class SolutionBuilder {
-  private outcomes: SolutionOutcome[] = [];
-  private ptb: Transaction;
-  
-  constructor(
-    private batchId: string,
-    private solverAddress: string
-  ) {
+  private readonly ptb: Transaction;
+
+  constructor(private readonly solverAddress: string) {
     this.ptb = new Transaction();
   }
-  
-  /**
-   * Add outcome for an intent
-   */
-  addOutcome(outcome: SolutionOutcome): void {
-    this.outcomes.push(outcome);
-  }
-  
-  /**
-   * Get the underlying PTB for custom modifications
-   */
+
   getPTB(): Transaction {
     return this.ptb;
   }
-  
-  /**
-   * Build final solution submission
-   * Note: In production, you should pass a SuiClient to build() method
-   */
-  async build(options?: { client?: any }): Promise<{
-    submission: Omit<SolutionSubmission, 'walrus_blob_id'>;
+
+  async build(options?: { client?: any; encoding?: 'base64' | 'hex' }): Promise<{
+    submission: SolutionSubmission;
     ptbBytes: Uint8Array;
   }> {
-    // For now, we'll use a simplified approach
-    // In real usage, solvers should pass a SuiClient: await this.ptb.build({ client })
-    const ptbBytes = options?.client 
+    const ptbBytes = options?.client
       ? await this.ptb.build({ client: options.client })
-      : new Uint8Array(); // Placeholder - real implementation needs client
-    const ptbHash = await this.hashPTB(ptbBytes);
-    
-    const submission: Omit<SolutionSubmission, 'walrus_blob_id'> = {
-      solution_id: crypto.randomUUID(),
-      batch_id: this.batchId,
-      solver_address: this.solverAddress,
-      ptb_hash: ptbHash,
-      outcomes: this.outcomes,
-      total_surplus_usd: this.calculateTotalSurplus(),
-      estimated_gas: '0', // Must simulate PTB
-      estimated_slippage_bps: 0, // Must calculate
-      submitted_at: Date.now(),
+      : new Uint8Array();
+
+    const encoding = options?.encoding ?? 'base64';
+    const transaction_bytes =
+      encoding === 'hex'
+        ? Buffer.from(ptbBytes).toString('hex')
+        : Buffer.from(ptbBytes).toString('base64');
+
+    return {
+      submission: {
+        solver_address: this.solverAddress,
+        transaction_bytes,
+      },
+      ptbBytes,
     };
-    
-    return { submission, ptbBytes };
-  }
-  
-  private calculateTotalSurplus(): string {
-    return this.outcomes
-      .reduce((sum, o) => sum + parseFloat(o.surplus_claimed), 0)
-      .toString();
-  }
-  
-  private async hashPTB(bytes: Uint8Array): Promise<string> {
-    const hashBuffer = await crypto.subtle.digest('SHA-256', bytes as BufferSource);
-    return Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
   }
 }

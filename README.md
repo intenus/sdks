@@ -82,14 +82,14 @@ listener.onNewBatch(async (batch, manifest) => {
   console.log(`Received batch for epoch ${batch.epoch} with ${manifest.intents.length} intents.`);
   
   // 3. Implement Solving Logic
-  const solutionBuilder = new SolutionBuilder(batch.batch_id, signer.getPublicKey().toSuiAddress());
+  const solutionBuilder = new SolutionBuilder(signer.getPublicKey().toSuiAddress());
   
   // Your custom logic to find optimal solutions for intents in the manifest
   // For example, finding P2P matches or routing through DEXs
   
   // 4. Build and Submit Solution
-  const solution = await solutionBuilder.build({ client: suiClient });
-  await listener.submitSolution(solution);
+  const { submission } = await solutionBuilder.build({ client: suiClient });
+  await listener.submitSolution(batch.batch_id, submission);
   console.log(`Submitted solution for batch ${batch.batch_id}`);
 });
 ```

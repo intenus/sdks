@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://intenus.org/schemas/igs/solution/v1.0.0",
+  "title": "Intenus General Standard (IGS) Solution v1.0",
+  "description": "Minimal payload that solvers submit to Intenus routers. Only the solver identity and serialized PTB are required.",
+  "type": "object",
+  "required": ["solver_address", "transaction_bytes"],
+  "properties": {
+    "solver_address": {
+      "type": "string",
+      "pattern": "^0x[a-fA-F0-9]{1,64}$",
+      "description": "Sui address of the solver submitting this PTB"
+    },
+    "transaction_bytes": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Serialized PTB bytes (base64 or hex encoded string)"
+        }
+      },
+      "additionalProperties": false
+}

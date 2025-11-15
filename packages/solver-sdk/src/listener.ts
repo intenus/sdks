@@ -43,9 +43,9 @@ export class SolverListener {
   /**
    * Submit solution to backend
    */
-  async submitSolution(solution: SolutionSubmission): Promise<void> {
+  async submitSolution(batchId: string, solution: SolutionSubmission): Promise<void> {
     await this.redis.publish(
-      `solver:solution:${solution.batch_id}`,
+      `solver:solution:${batchId}`,
       JSON.stringify(solution)
     );
   }

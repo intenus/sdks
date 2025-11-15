@@ -10,36 +10,20 @@ export type {
   IGSConstraints as Constraints, // Alias for backward compatibility
   IGSPreferences as ExecutionPreferences, // Alias for backward compatibility
   IGSExecutionMode, // New execution mode type
-  IGSTiming,
   IGSMetadata as IntentMetadata, // Alias for backward compatibility
-  IGSSolution,
-  IGSSimulationResult, // Sui dry run simulation result
-  IGSRankedSolution,
   IGSValidationResult,
   IGSValidationError,
-  IGSPreRankingResult, // PreRankingEngine result
-  IGSRankingResult, // RankingEngine result
 } from './igs.js';
-
-// Batch types
-export type {
-  Batch,
-  BatchManifest,
-  IntentReference,
-  BatchRequirements,
-} from './batch.js';
-export { BatchStatus } from './batch.js';
 
 // Solution types
 export type {
+  IGSSolution,
   SolutionSubmission,
-  SolutionOutcome,
-  StrategySummary,
-  TEEAttestation,
-  RankedPTB,
-  ExpectedOutcome,
-  ExecutionSummary,
-  Explanation,
+  Solution,
+  SimulationResult,
+  RankedSolution,
+  PreRankingResult,
+  RankingResult,
 } from './solution.js';
 
 // Walrus storage types

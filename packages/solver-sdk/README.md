@@ -58,12 +58,6 @@ const intent: Intent = { /* ... received from the network ... */ };
 
 const builder = new IGSSolutionBuilder(intent, { solver_address: solverAddress });
 
-// Add promised outputs for the solution
-builder.addPromisedOutput({
-  asset_id: '0x...::usdc::USDC',
-  amount: '100500000', // 100.5 USDC, representing a surplus
-});
-
 // Access the underlying Transaction object for custom PTB modifications
 const txb = builder.getPTB();
 txb.moveCall({
@@ -74,7 +68,7 @@ txb.moveCall({
 // Build the final, signed solution ready for submission
 const { solution } = await builder.build({ client: suiClient });
 
-await listener.submitSolution(solution);
+await listener.submitSolution(manifest.batch_id, solution);
 ```
 
 ### `WalrusBatchFetcher`
@@ -129,12 +123,8 @@ redis.on('message', async (channel, message) => {
   
   // 3. Manually construct the solution submission
   const solution: IGSSolution = {
-    solution_id: crypto.randomUUID(),
-    intent_id: 'intent_abc',
     solver_address: '0x...',
-    promised_outputs: [ /* ... */ ],
-    ptb_bytes: Buffer.from(await txb.build({ client: suiClient })).toString('hex'),
-    // ... other IGS solution properties
+    transaction_bytes: Buffer.from(await txb.build({ client: suiClient })).toString('base64'),
   };
   
   // 4. Submit through your own Redis channel or API

@@ -102,36 +102,8 @@ export class IGSSchemaValidator {
   }
 
   private static validateBusinessLogic(intent: any, errors: IGSValidationError[], warnings: string[]): void {
-    this.validateTiming(intent, errors, warnings);
     this.validateCrossFields(intent, errors, warnings);
     this.validateBusinessRules(intent, errors, warnings);
-  }
-
-  private static validateTiming(intent: any, errors: IGSValidationError[], warnings: string[]): void {
-    const now = Date.now();
-    
-    if (intent.timing?.absolute_deadline && intent.timing.absolute_deadline <= now) {
-      errors.push({
-        code: 'EXPIRED_DEADLINE',
-        field: 'timing.absolute_deadline',
-        message: 'Intent deadline has already passed',
-        severity: 'error'
-      });
-    }
-    
-    if (intent.constraints?.deadline && intent.timing?.absolute_deadline) {
-      if (intent.constraints.deadline !== intent.timing.absolute_deadline) {
-        warnings.push('Constraint deadline and timing deadline should match');
-      }
-    }
-    
-    if (intent.timing?.solver_window_ms) {
-      if (intent.timing.solver_window_ms < 1000) {
-        warnings.push('Solver window < 1s may be too short');
-      } else if (intent.timing.solver_window_ms > 60000) {
-        warnings.push('Solver window > 60s may be too long');
-      }
-    }
   }
 
   private static validateCrossFields(intent: any, errors: IGSValidationError[], warnings: string[]): void {
@@ -236,13 +208,6 @@ export class IGSSchemaValidator {
       warnings.push('Low benchmark confidence may affect surplus calculation accuracy');
     }
 
-    if (intent.timing?.solver_window_ms < 2000) {
-      warnings.push('Solver window < 2s may be too short for complex operations');
-    }
-
-    if (intent.timing?.user_decision_timeout_ms > 600000) {
-      warnings.push('User decision timeout > 10 minutes may be too long');
-    }
   }
 
   private static calculateComplianceScore(
@@ -265,10 +230,6 @@ export class IGSSchemaValidator {
     
     if (intent.operation?.expected_outcome?.benchmark?.confidence > 0.9) {
       score += 5;
-    }
-
-    if (intent.preferences?.execution?.require_simulation) {
-      score += 3;
     }
 
     return Math.max(0, Math.min(100, score));

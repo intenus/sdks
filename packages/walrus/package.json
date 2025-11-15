@@ -28,25 +28,26 @@
   },
   "dependencies": {
     "@intenus/common": "workspace:*",
-    "@mysten/walrus": "^0.8.3",
-    "@mysten/sui": "^1.44.0"
+    "@mysten/sui": "^1.44.0",
+    "@mysten/walrus": "^0.8.3"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0",
     "tsup": "^8.0.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.0.0",
     "vitest": "^1.0.0"
   },
   "peerDependencies": {
-    "@mysten/walrus": "^0.8.3",
-    "@mysten/sui": "^1.44.0"
+    "@mysten/sui": "^1.44.0",
+    "@mysten/walrus": "^0.8.3"
   },
   "publishConfig": {
     "access": "public"
   },
   "keywords": [
     "walrus",
-    "storage", 
+    "storage",
     "intenus",
     "defi",
     "sui",

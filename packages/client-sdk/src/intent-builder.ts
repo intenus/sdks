@@ -3,15 +3,32 @@ import type { Intent } from '@intenus/common';
 /**
  * Fluent API for building IGS intents
  * Provides a convenient way to construct Intent objects with proper validation
- * Note: intent_id and user_address are derived from on-chain IGSObject
  */
 export class IntentBuilder {
   private intent: Intent;
 
-  constructor() {
+  constructor(userAddress: string) {
     this.intent = {
       igs_version: '1.0.0',
-      created_at: Date.now(),
+      object: {
+        user_address: userAddress,
+        created_ts: Date.now(),
+        policy: {
+          solver_access_window: {
+            start_ms: Date.now(),
+            end_ms: Date.now() + 60_000,
+          },
+          auto_revoke_time: Date.now() + 3_600_000,
+          access_condition: {
+            requires_solver_registration: true,
+            min_solver_stake: '0',
+            requires_tee_attestation: false,
+            expected_measurement: '',
+            purpose: 'generic_intent',
+          },
+        },
+      },
+      user_address: userAddress,
       intent_type: 'swap.exact_input',
       description: '',
       operation: {
@@ -31,7 +48,6 @@ export class IntentBuilder {
         },
       },
       constraints: {
-        deadline: Date.now() + 300000,
         max_slippage_bps: 50,
         min_outputs: [],
       },
@@ -46,17 +62,6 @@ export class IntentBuilder {
         execution: {
           mode: 'top_n_with_best_incentive',
           show_top_n: 3,
-          require_simulation: true,
-        },
-      },
-      timing: {
-        absolute_deadline: Date.now() + 300000,
-        solver_window_ms: 5000,
-        user_decision_timeout_ms: 60000,
-        batch: {
-          batch_id: 'batch_' + Date.now(),
-          batch_epoch: Math.floor(Date.now() / 10000),
-          batch_closes_at: Date.now() + 10000,
         },
       },
       metadata: {
@@ -121,7 +126,6 @@ export class IntentBuilder {
     };
     
     this.intent.constraints = {
-      deadline: Date.now() + 300000,
       max_slippage_bps: slippageBps,
       min_outputs: [{
         asset_id: tokenOut,

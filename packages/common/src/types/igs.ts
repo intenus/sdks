@@ -3,11 +3,51 @@
  * Universal standard for DeFi intents with AI ranking and surplus measurement
  *
  * ARCHITECTURE:
- * - IGSIntent: Off-chain intent submission (what user wants)
- * - IGSObject: On-chain object stored on Sui (intent_id and user_address from object)
+ * - IGSIntent: Off-chain intent submission (what user wants) - stored in Walrus
+ * - IGSObject: On-chain Sui object - stores reference (blob_id) + policy enforcement
+ * - Separation: Content (off-chain) vs Tracking (on-chain)
  * - PreRankingEngine: Validates schema, constraints, converts to features vector
  * - Dry Run: Simulates solutions on Sui
  * - RankingEngine: Ranks solutions based on simulation results
+ * 
+ * FILE STRUCTURE:
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │ 1. INTENT SPECIFICATION                                     │
+ * │    - IGSIntent, IGSOperation, IGSConstraints, etc.         │
+ * │    - What user wants (stored in Walrus)                    │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │ 2. ON-CHAIN OBJECT                                          │
+ * │    - IGSObject (Sui object with blob_id + policy)          │
+ * │    - Minimal on-chain footprint                            │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │ 3. SOLUTION FORMAT                                          │
+ * │    - IGSSolution (what solvers submit)                     │
+ * │    - IGSRankedSolution (with AI scores)                    │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │ 4. VALIDATION                                               │
+ * │    - IGSValidationResult, IGSValidationError               │
+ * │    - Schema and constraint checking                        │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │ 5. PRE-RANKING ENGINE                                       │
+ * │    - IGSPreRankingResult                                   │
+ * │    - Validation + Simulation + Feature extraction          │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │ 6. RANKING ENGINE                                           │
+ * │    - IGSRankingResult                                      │
+ * │    - AI-powered ranking with explanations                  │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │ 7. EXAMPLES                                                 │
+ * │    - Sample intents for reference                          │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │ 8. UTILITIES                                                │
+ * │    - Helper functions (validate, migrate, calculate)       │
+ * └─────────────────────────────────────────────────────────────┘
+ */
+
+/**
+ * ============================================================================
+ * INTENT SPECIFICATION — what the user wants (stored off-chain in Walrus)
+ * ============================================================================
  */
 
 /**
@@ -18,58 +58,56 @@
 export interface IGSIntent {
   /** IGS version - must be '1.0.0' for this schema */
   igs_version: '1.0.0';
-  /** Intent creation timestamp (Unix milliseconds) */
-  created_at: number;
+  /** On-chain IGS object metadata */
+  object: IGSObject;
+  /** User's blockchain address */
+  user_address: string;
   /** Type of intent operation */
   intent_type: IGSIntentType;
   /** Human-readable description of the intent */
-  description: string;
+  description?: string;
   /** Core operation specification */
   operation: IGSOperation;
-  /** Hard constraints that must be satisfied */
-  constraints: IGSConstraints;
+  /** Optional hard constraints that must be satisfied */
+  constraints?: IGSConstraints;
   /** Soft preferences for optimization */
-  preferences: IGSPreferences;
-  /** Timing and deadline specifications */
-  timing: IGSTiming;
+  preferences?: IGSPreferences;
   /** Additional metadata and context */
-  metadata: IGSMetadata;
+  metadata?: IGSMetadata;
 }
 
 /**
- * IGS Object - On-chain representation stored on Sui
- * The intent_id comes from Sui Object ID, user_address from object owner
+ * ============================================================================
+ * ON-CHAIN OBJECT — reference wrapper stored on Sui
+ * ============================================================================
+ */
+
+/**
+ * IGS Object - On-chain Sui Object that references IGS Intent
+ * Stores pointer to Walrus blob + policy enforcement parameters
+ * Full intent content stored off-chain in Walrus
  * @interface IGSObject
  */
 export interface IGSObject {
-  /** IGS version - must be '1.0.0' for this schema */
-  igs_version: '1.0.0';
-  /** Intent creation timestamp (Unix milliseconds) */
-  created_at: number;
-  /** Type of intent operation */
-  intent_type: IGSIntentType;
-  /** Human-readable description of the intent */
-  description: string;
-  /** Core operation specification */
-  operation: IGSOperation;
-  /** Hard constraints that must be satisfied */
-  constraints: IGSConstraints;
-  /** Soft preferences for optimization */
-  preferences: IGSPreferences;
-  /** Timing and deadline specifications */
-  timing: IGSTiming;
-  /** Additional metadata and context */
-  metadata: IGSMetadata;
-  /** On-chain specific fields from Sui */
-  on_chain: {
-    /** Sui Object ID (serves as intent_id) */
-    object_id: string;
-    /** Object version */
-    version: string;
-    /** Transaction digest that created this object */
-    digest: string;
-    /** Owner address (serves as user_address) */
-    owner: string;
+  /** Owner address from Sui object (serves as user_address) */
+  user_address: string;
+  /** Timestamp when object was created (from Clock) */
+  created_ts: number;
+  
+  /** On-chain policy enforcement parameters */
+  policy: {
+    solver_access_window: {
+      start_ms: number;
+      end_ms: number;
+    };
+    auto_revoke_time: number;
+    access_condition: {
+      requires_solver_registration: boolean;
+      min_solver_stake: string;
+      requires_tee_attestation: boolean;
+      expected_measurement: string;
+      purpose: string;
+    };
   };
 }
 
@@ -95,7 +133,7 @@ export interface IGSOperation {
   /** Assets that the user wants to receive as output */
   outputs: IGSAssetFlow[];
   /** Expected outcome used as benchmark for surplus calculation */
-  expected_outcome: IGSExpectedOutcome;
+  expected_outcome?: IGSExpectedOutcome;
 }
 
 /**
@@ -106,18 +144,16 @@ export interface IGSAssetFlow {
   /** Asset identifier (e.g., "0x2::sui::SUI" for Sui format) */
   asset_id: string;
   /** Asset metadata for display and validation */
-  asset_info: {
+  asset_info?: {
     /** Asset symbol (e.g., "SUI", "USDC") */
-    symbol: string;
+    symbol?: string;
     /** Number of decimal places for the asset */
-    decimals: number;
+    decimals?: number;
     /** Optional human-readable asset name */
     name?: string;
   };
   /** Amount specification (exact, range, or all available) */
   amount: IGSAmount;
-  /** Minimum amount for slippage protection */
-  min_amount?: string;
 }
 
 /**
@@ -142,29 +178,29 @@ export interface IGSExpectedOutcome {
     amount: string;
   }>;
   /** Expected transaction costs */
-  expected_costs: {
+  expected_costs?: {
     /** Estimated gas cost */
-    gas_estimate: string;
+    gas_estimate?: string;
     /** Optional protocol fees */
     protocol_fees?: string;
     /** Optional slippage estimate */
     slippage_estimate?: string;
   };
   /** Benchmark source information */
-  benchmark: {
+  benchmark?: {
     /** Source of the benchmark (e.g., "dex_aggregator", "oracle") */
-    source: string;
+    source?: 'dex_aggregator' | 'oracle' | 'manual' | 'calculated';
     /** Timestamp when benchmark was created */
-    timestamp: number;
+    timestamp?: number;
     /** Confidence level (0-1) */
-    confidence: number;
+    confidence?: number;
   };
   /** Current market price for limit orders */
   market_price?: {
     /** Current market price */
-    price: string;
+    price?: string;
     /** Quote asset for the price */
-    price_asset: string;
+    price_asset?: string;
   };
 }
 
@@ -173,24 +209,25 @@ export interface IGSExpectedOutcome {
  * @interface IGSConstraints
  */
 export interface IGSConstraints {
-  /** Absolute deadline timestamp (Unix milliseconds) */
-  deadline: number;
   /** Maximum allowed slippage in basis points (100 bps = 1%) */
-  max_slippage_bps: number;
-  /** Maximum gas cost willing to pay */
-  max_gas_cost?: {
-    /** Asset to pay gas in */
+  max_slippage_bps?: number;
+  /** Expiration timestamp for the intent (ms) */
+  deadline_ms?: number;
+  /** Optional maximum input amounts (spending ceiling) */
+  max_inputs?: Array<{
     asset_id: string;
-    /** Maximum amount in base units */
-    amount: string;
-  };
-  /** Minimum required outputs for safety */
-  min_outputs: Array<{
-    /** Asset identifier */
-    asset_id: string;
-    /** Minimum amount in base units */
     amount: string;
   }>;
+  /** Optional minimum outputs for safety */
+  min_outputs?: Array<{
+    asset_id: string;
+    amount: string;
+  }>;
+  /** Optional maximum gas cost willing to pay */
+  max_gas_cost?: {
+    asset_id: string;
+    amount: string;
+  };
   /** Optional routing constraints */
   routing?: {
     /** Maximum number of hops allowed */
@@ -225,74 +262,38 @@ export type IGSExecutionMode =
  */
 export interface IGSPreferences {
   /** Primary optimization goal */
-  optimization_goal: 'maximize_output' | 'minimize_gas' | 'fastest_execution' | 'balanced';
+  optimization_goal?: 'maximize_output' | 'minimize_gas' | 'fastest_execution' | 'balanced';
   /** Ranking weights for AI (should sum to 100) */
-  ranking_weights: {
-    /** Weight for surplus optimization (default: 50) */
-    surplus_weight: number;
-    /** Weight for gas cost optimization (default: 25) */
-    gas_cost_weight: number;
-    /** Weight for execution speed (default: 15) */
-    execution_speed_weight: number;
+  ranking_weights?: {
+    /** Weight for surplus optimization (default: 60) */
+    surplus_weight?: number;
+    /** Weight for gas cost optimization (default: 20) */
+    gas_cost_weight?: number;
+    /** Weight for execution speed (default: 10) */
+    execution_speed_weight?: number;
     /** Weight for solver reputation (default: 10) */
-    reputation_weight: number;
+    reputation_weight?: number;
   };
   /** Execution preferences */
-  execution: {
+  execution?: {
     /**
      * Execution mode - determines what RankingEngine returns
      * Note: Solvers never auto-execute. They only submit PTBs for ranking.
      * User must execute the returned PTB themselves.
      */
-    mode: IGSExecutionMode;
+    mode?: IGSExecutionMode;
     /**
      * Number of top solutions to show user (only for top_n_with_best_incentive mode)
      * For best_solution mode, this is always 1
      */
     show_top_n?: number;
-    /**
-     * Whether to require Sui dry run simulation before ranking
-     * Recommended: true for production
-     */
-    require_simulation: boolean;
   };
   /** Privacy preferences */
   privacy?: {
     /** Whether to encrypt the intent */
-    encrypt_intent: boolean;
+    encrypt_intent?: boolean;
     /** Whether to execute anonymously */
-    anonymous_execution: boolean;
-  };
-}
-
-/**
- * Timing specifications and deadlines
- * @interface IGSTiming
- */
-export interface IGSTiming {
-  /** Absolute deadline for intent execution */
-  absolute_deadline: number;
-  /** Time window for solvers to submit solutions (ms) */
-  solver_window_ms: number;
-  /** Time for user to decide on solutions (ms) */
-  user_decision_timeout_ms: number;
-  /** Batch assignment information */
-  batch: {
-    /** Unique batch identifier */
-    batch_id: string;
-    /** Batch epoch number */
-    batch_epoch: number;
-    /** When this batch closes for new intents */
-    batch_closes_at: number;
-  };
-  /** Execution timing constraints */
-  execution?: {
-    /** Time-in-force specification */
-    time_in_force: 'immediate' | 'good_til_cancel' | 'fill_or_kill';
-    /** Earliest allowed execution time */
-    earliest_execution?: number;
-    /** Latest allowed execution time */
-    latest_execution?: number;
+    anonymous_execution?: boolean;
   };
 }
 
@@ -304,20 +305,20 @@ export interface IGSMetadata {
   /** Original user input from NLP parsing */
   original_input?: {
     /** Original text input */
-    text: string;
+    text?: string;
     /** Language of the input */
-    language: string;
+    language?: string;
     /** NLP parsing confidence (0-1) */
-    confidence: number;
+    confidence?: number;
   };
   /** Client application information */
-  client: {
+  client?: {
     /** Client application name */
-    name: string;
+    name?: string;
     /** Client version */
-    version: string;
+    version?: string;
     /** Platform (web, mobile, etc.) */
-    platform: string;
+    platform?: string;
   };
   /** Warnings about the intent */
   warnings?: string[];
@@ -328,141 +329,27 @@ export interface IGSMetadata {
 }
 
 /**
- * Solution submitted by a solver for an IGS intent
- * @interface IGSSolution
+ * ============================================================================
+ * So
+ * ============================================================================
+ */
+
+/**
+ * Minimal IGS solution payload submitted by solvers.
+ * Only identifies the solver and provides serialized PTB bytes.
  */
 export interface IGSSolution {
-  /** Unique solution identifier */
-  solution_id: string;
-  /** Intent this solution addresses (from Sui Object ID) */
-  intent_id: string;
-  /** Solver's blockchain address */
+  /** Sui address of the solver submitting this PTB */
   solver_address: string;
-  /** When solution was submitted (Unix ms) */
-  submitted_at: number;
-  /** Serialized transaction bytes (hex string) */
-  ptb_bytes: string;
-  /** Transaction digest/hash */
-  ptb_digest: string;
-  /** Promised output amounts */
-  promised_outputs: Array<{
-    /** Asset identifier */
-    asset_id: string;
-    /** Promised amount in base units */
-    amount: string;
-  }>;
-  /** Estimated gas cost */
-  estimated_gas: string;
-  /** Estimated slippage in basis points */
-  estimated_slippage_bps: number;
-  /** Optional protocol fees */
-  protocol_fees?: string;
-  /** Surplus calculation vs benchmark */
-  surplus_calculation: {
-    /** Expected value from intent benchmark */
-    benchmark_value_usd: string;
-    /** Actual value from this solution */
-    solution_value_usd: string;
-    /** Surplus amount (solution - benchmark) */
-    surplus_usd: string;
-    /** Surplus as percentage of benchmark */
-    surplus_percentage: string;
-  };
-  /** Strategy and execution details */
-  strategy_summary: {
-    /** Protocols used in the solution */
-    protocols_used: string[];
-    /** Total number of hops */
-    total_hops: number;
-    /** Human-readable execution path */
-    execution_path: string;
-    /** Unique techniques or optimizations */
-    unique_techniques?: string;
-  };
-  /** IGS compliance score (0-100) */
-  compliance_score: number;
-  /** Details about compliance issues */
-  compliance_details?: string[];
-  /** Sui dry run simulation result (populated by PreRankingEngine) */
-  simulation_result?: IGSSimulationResult;
+  /** Serialized PTB bytes (base64 or hex encoded string) */
+  transaction_bytes: string;
 }
 
 /**
- * Result from Sui dry run simulation
- * @interface IGSSimulationResult
+ * ============================================================================
+ * VALIDATION — schema and constraint validation types
+ * ============================================================================
  */
-export interface IGSSimulationResult {
-  /** Whether simulation was successful */
-  success: boolean;
-  /** Simulated transaction digest */
-  digest?: string;
-  /** Actual gas used in simulation */
-  gas_used?: string;
-  /** Simulated effects */
-  effects?: {
-    /** Status of the simulation */
-    status: 'success' | 'failure';
-    /** Gas object changes */
-    gas_object: {
-      owner: string;
-      reference: {
-        object_id: string;
-        version: string;
-        digest: string;
-      };
-    };
-    /** Modified objects */
-    modified_at_versions?: Array<{
-      object_id: string;
-      sequence_number: string;
-    }>;
-    /** Created objects */
-    created?: Array<{
-      owner: string;
-      reference: {
-        object_id: string;
-        version: string;
-        digest: string;
-      };
-    }>;
-  };
-  /** Error message if simulation failed */
-  error?: string;
-  /** Simulation timestamp */
-  simulated_at: number;
-}
-
-/**
- * Solution ranked and scored by AI router
- * @interface IGSRankedSolution
- */
-export interface IGSRankedSolution {
-  /** Ranking position (1 = best) */
-  rank: number;
-  /** AI confidence score (0-100) */
-  ai_score: number;
-  /** The underlying solution */
-  solution: IGSSolution;
-  /** AI reasoning and explanation */
-  ai_reasoning: {
-    /** Primary reason for this ranking */
-    primary_reason: string;
-    /** Additional supporting reasons */
-    secondary_reasons: string[];
-    /** Risk level assessment */
-    risk_assessment: 'low' | 'medium' | 'high';
-    /** AI confidence in this ranking (0-1) */
-    confidence_level: number;
-  };
-  /** Whether personalization was applied */
-  personalization_applied: boolean;
-  /** How well this fits user's history */
-  user_fit_score?: number;
-  /** Warnings about this solution */
-  warnings: string[];
-  /** When this ranking expires */
-  expires_at: number;
-}
 
 /**
  * Result of IGS intent validation
@@ -495,86 +382,32 @@ export interface IGSValidationError {
 }
 
 /**
- * PreRankingEngine result - validates and prepares solutions for ranking
- * @interface IGSPreRankingResult
+ * ============================================================================
+ * EXAMPLES — sample IGS intents for reference
+ * ============================================================================
  */
-export interface IGSPreRankingResult {
-  /** Solutions that passed pre-ranking validation */
-  passed_solutions: IGSSolution[];
-  /** Solutions that failed pre-ranking */
-  failed_solutions: Array<{
-    solution: IGSSolution;
-    failure_reason: string;
-    errors: IGSValidationError[];
-  }>;
-  /** Feature vectors for AI ranking */
-  feature_vectors: Array<{
-    solution_id: string;
-    features: {
-      /** Surplus metrics */
-      surplus_usd: number;
-      surplus_percentage: number;
-      /** Cost metrics */
-      gas_cost: number;
-      protocol_fees: number;
-      /** Complexity metrics */
-      total_hops: number;
-      protocols_count: number;
-      /** Simulation metrics (from dry run) */
-      simulated_gas_used?: number;
-      simulation_success: boolean;
-      /** Solver reputation */
-      solver_reputation_score?: number;
-    };
-  }>;
-  /** Statistics */
-  stats: {
-    total_submitted: number;
-    passed: number;
-    failed: number;
-    simulated: number;
-  };
-  /** Timestamp */
-  processed_at: number;
-}
 
-/**
- * RankingEngine result - final ranked solutions for user
- * @interface IGSRankingResult
- */
-export interface IGSRankingResult {
-  /** Intent ID this ranking is for */
-  intent_id: string;
-  /** Execution mode used */
-  mode: IGSExecutionMode;
-  /** Ranked solutions (1 for best_solution, N for top_n_with_best_incentive) */
-  ranked_solutions: IGSRankedSolution[];
-  /**
-   * Best solution (for incentive)
-   * This solution always receives the fee, even in top_n mode
-   */
-  best_solution: IGSRankedSolution;
-  /** Ranking metadata */
-  metadata: {
-    /** Total solutions considered */
-    total_solutions: number;
-    /** Average AI score */
-    avg_ai_score: number;
-    /** Ranking model version */
-    model_version: string;
-    /** Ranking strategy used */
-    strategy: string;
-  };
-  /** When this ranking was created */
-  ranked_at: number;
-  /** When this ranking expires */
-  expires_at: number;
-}
-
-// Examples
 export const EXAMPLE_SIMPLE_SWAP: IGSIntent = {
   igs_version: '1.0.0',
-  created_at: Date.now(),
+  object: {
+    user_address: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+    created_ts: Date.now(),
+    policy: {
+      solver_access_window: {
+        start_ms: Date.now(),
+        end_ms: Date.now() + 60_000
+      },
+      auto_revoke_time: Date.now() + 3_600_000,
+      access_condition: {
+        requires_solver_registration: true,
+        min_solver_stake: '1000000000',
+        requires_tee_attestation: true,
+        expected_measurement: '0xtee123',
+        purpose: 'swap_routing'
+      }
+    }
+  },
+  user_address: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
 
   intent_type: 'swap.exact_input',
   description: 'Swap 100 SUI to USDC',
@@ -601,11 +434,9 @@ export const EXAMPLE_SIMPLE_SWAP: IGSIntent = {
         name: 'USD Coin'
       },
       amount: {
-        type: 'range',
-        min: '298500000',
-        max: '300000000'
-      },
-      min_amount: '298500000'
+        type: 'exact',
+        value: '300000000'
+      }
     }],
     expected_outcome: {
       expected_outputs: [{
@@ -626,12 +457,20 @@ export const EXAMPLE_SIMPLE_SWAP: IGSIntent = {
   },
 
   constraints: {
-    deadline: Date.now() + 300000,
     max_slippage_bps: 50,
+    deadline_ms: Date.now() + 300_000,
+    max_inputs: [{
+      asset_id: '0x2::sui::SUI',
+      amount: '100000000000'
+    }],
     min_outputs: [{
       asset_id: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890::usdc::USDC',
       amount: '298500000'
-    }]
+    }],
+    max_gas_cost: {
+      asset_id: '0x2::sui::SUI',
+      amount: '1000000'
+    }
   },
 
   preferences: {
@@ -644,19 +483,7 @@ export const EXAMPLE_SIMPLE_SWAP: IGSIntent = {
     },
     execution: {
       mode: 'top_n_with_best_incentive',
-      show_top_n: 3,
-      require_simulation: true
-    }
-  },
-
-  timing: {
-    absolute_deadline: Date.now() + 300000,
-    solver_window_ms: 5000,
-    user_decision_timeout_ms: 60000,
-    batch: {
-      batch_id: 'batch_001',
-      batch_epoch: 1234,
-      batch_closes_at: Date.now() + 10000
+      show_top_n: 3
     }
   },
 
@@ -677,7 +504,25 @@ export const EXAMPLE_SIMPLE_SWAP: IGSIntent = {
 
 export const EXAMPLE_LIMIT_ORDER: IGSIntent = {
   igs_version: '1.0.0',
-  created_at: Date.now(),
+  object: {
+    user_address: '0x456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef012',
+    created_ts: Date.now(),
+    policy: {
+      solver_access_window: {
+        start_ms: Date.now(),
+        end_ms: Date.now() + 120_000
+      },
+      auto_revoke_time: Date.now() + 7_200_000,
+      access_condition: {
+        requires_solver_registration: true,
+        min_solver_stake: '5000000000',
+        requires_tee_attestation: true,
+        expected_measurement: '0xtee456',
+        purpose: 'limit_order_execution'
+      }
+    }
+  },
+  user_address: '0x456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef012',
 
   intent_type: 'limit.sell',
   description: 'Sell 1000 SUI at $3.50 limit',
@@ -702,11 +547,9 @@ export const EXAMPLE_LIMIT_ORDER: IGSIntent = {
         decimals: 6
       },
       amount: {
-        type: 'range',
-        min: '3500000000',
-        max: '3600000000'
-      },
-      min_amount: '3500000000'
+        type: 'exact',
+        value: '3500000000'
+      }
     }],
     expected_outcome: {
       expected_outputs: [{
@@ -729,8 +572,11 @@ export const EXAMPLE_LIMIT_ORDER: IGSIntent = {
   },
 
   constraints: {
-    deadline: Date.now() + 86400000,
     max_slippage_bps: 100,
+    max_inputs: [{
+      asset_id: '0x2::sui::SUI',
+      amount: '1000000000000'
+    }],
     min_outputs: [{
       asset_id: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890::usdc::USDC',
       amount: '3500000000'
@@ -751,26 +597,11 @@ export const EXAMPLE_LIMIT_ORDER: IGSIntent = {
       reputation_weight: 10
     },
     execution: {
-      mode: 'best_solution',
-      require_simulation: true
+      mode: 'best_solution'
     },
     privacy: {
       encrypt_intent: true,
       anonymous_execution: false
-    }
-  },
-
-  timing: {
-    absolute_deadline: Date.now() + 86400000,
-    solver_window_ms: 30000,
-    user_decision_timeout_ms: 300000,
-    batch: {
-      batch_id: 'batch_limit_001',
-      batch_epoch: 1235,
-      batch_closes_at: Date.now() + 30000
-    },
-    execution: {
-      time_in_force: 'good_til_cancel'
     }
   },
 
@@ -789,7 +620,11 @@ export const EXAMPLE_LIMIT_ORDER: IGSIntent = {
   }
 };
 
-// Utilities
+/**
+ * ============================================================================
+ * UTILITIES — helper functions for IGS validation and processing
+ * ============================================================================
+ */
 
 /**
  * Migrate legacy intent format to IGS format
@@ -819,11 +654,30 @@ export function validateIGS(intent: IGSIntent): IGSValidationResult {
     });
   }
 
-  if (intent.timing.absolute_deadline <= Date.now()) {
+  if (!intent.user_address) {
+    errors.push({
+      code: 'MISSING_USER_ADDRESS',
+      field: 'user_address',
+      message: 'User address is required',
+      severity: 'error'
+    });
+  }
+
+  if (!intent.object) {
+    errors.push({
+      code: 'MISSING_OBJECT',
+      field: 'object',
+      message: 'On-chain IGS object metadata is required',
+      severity: 'error'
+    });
+  }
+
+  const now = Date.now();
+  if (intent.constraints?.deadline_ms && intent.constraints.deadline_ms <= now) {
     errors.push({
       code: 'EXPIRED_DEADLINE',
-      field: 'timing.absolute_deadline',
-      message: 'Intent deadline has passed',
+      field: 'constraints.deadline_ms',
+      message: 'Intent deadline has already passed',
       severity: 'error'
     });
   }
@@ -846,7 +700,7 @@ export function validateIGS(intent: IGSIntent): IGSValidationResult {
     });
   }
 
-  if (intent.constraints.max_slippage_bps > 10000) {
+  if (intent.constraints?.max_slippage_bps && intent.constraints.max_slippage_bps > 10000) {
     warnings.push('Slippage > 100% is unusual');
   }
 
@@ -864,20 +718,22 @@ export function validateIGS(intent: IGSIntent): IGSValidationResult {
 /**
  * Calculate surplus of a solution compared to intent benchmark
  * @param {IGSIntent} intent - Original intent with benchmark
- * @param {IGSSolution} solution - Solution to calculate surplus for
+ * @param {{ promised_outputs: Array<{ amount: string }> }} solution - Solution-like object to calculate surplus for
  * @returns {Object} Surplus calculation result
  * @returns {string} returns.surplus_usd - Surplus amount in USD
  * @returns {string} returns.surplus_percentage - Surplus as percentage
  */
 export function calculateSurplus(
   intent: IGSIntent,
-  solution: IGSSolution
+  solution: { promised_outputs: Array<{ amount: string }> }
 ): {
   surplus_usd: string;
   surplus_percentage: string;
 } {
-  const benchmarkValue = parseFloat(intent.operation.expected_outcome.expected_outputs[0].amount);
-  const solutionValue = parseFloat(solution.promised_outputs[0].amount);
+  const benchmarkValue = parseFloat(
+    intent.operation.expected_outcome?.expected_outputs?.[0]?.amount ?? '0'
+  );
+  const solutionValue = parseFloat(solution.promised_outputs?.[0]?.amount ?? '0');
   
   const surplus = solutionValue - benchmarkValue;
   const surplusPercentage = (surplus / benchmarkValue) * 100;

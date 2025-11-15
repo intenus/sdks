@@ -42,7 +42,7 @@ The IGS v1.0 MVP focuses on swaps and limit orders with standardized surplus cal
 **Two forms of IGS:**
 
 1. **IGSIntent** (Off-chain submission): What the user wants
-2. **IGSObject** (On-chain storage): Stored on Sui blockchain
+2. **IGSObject** (On-chain Sui Object): Stored on Sui blockchain
 
 ```typescript
 // Off-chain intent submission (no blockchain-specific fields)
@@ -51,7 +51,7 @@ interface IGSIntent {
   igs_version: '1.0.0';
   created_at: number;
 
-  // CLASSIFICATION
+  // CLASSIFICATION  
   intent_type: IGSIntentType;
   description: string;
 
@@ -71,27 +71,82 @@ interface IGSIntent {
   metadata: IGSMetadata;
 }
 
-// On-chain object (includes Sui-specific fields)
+// On-chain Sui Object (directly represents what's stored on Sui)
 interface IGSObject {
-  // ... all fields from IGSIntent ...
-
-  // ON-CHAIN SPECIFIC (from Sui)
-  on_chain: {
-    object_id: string;      // Serves as intent_id
-    version: string;
-    digest: string;
-    owner: string;          // Serves as user_address
+  // Sui Object Fields (from blockchain)
+  id: string;                // UID from Sui - serves as intent_id
+  user_address: string;      // owner address from Sui
+  created_ts: number;        // timestamp when object was created
+  
+  // IGS Content Reference (stored in Walrus)
+  blob_id: string;           // Reference to full IGS intent in Walrus
+  
+  // On-chain Policy Enforcement
+  policy: {
+    solver_access_window: {
+      start_ms: number;
+      end_ms: number;
+    };
+    router_access_enabled: boolean;
+    auto_revoke_time: number;
+    access_condition: {
+      requires_solver_registration: boolean;
+      min_solver_stake: string;
+      requires_tee_attestation: boolean;
+      expected_measurement: string;
+      purpose: string;
+    };
   };
 }
 ```
 
-**Key Changes:**
-- `intent_id` removed from IGSIntent → derived from Sui `object_id`
-- `user_address` removed from IGSIntent → derived from Sui `owner`
-- IGS schema focuses purely on intent (what user wants)
-- Blockchain-specific fields only in IGSObject
+**Key Separation:**
+- **IGSIntent**: Pure intent specification (what user wants) - stored in Walrus
+- **IGSObject**: On-chain reference object on Sui - stores pointer + policy
+- `id` from Sui object serves as `intent_id`
+- `user_address` from Sui object owner
+- Full intent content (operation, constraints, etc.) stored off-chain in Walrus
+- On-chain only stores: reference (blob_id) and policy enforcement parameters
 
-**Design Philosophy:** IGS is protocol-agnostic. It describes **what** the user wants, not **how** it will be executed or enforced. Implementation details like timing windows, access control, and validation are handled by the execution layer.
+**Storage Architecture:**
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                     User Submission                       │
+│                                                           │
+│  IGSIntent (JSON)                                        │
+│  ├─ operation: { inputs, outputs, expected_outcome }     │
+│  ├─ constraints: { max_slippage, min_outputs }          │
+│  ├─ preferences: { optimization_goal, ranking_weights }  │
+│  └─ metadata: { client, original_input }                │
+└──────────────────────────────────────────────────────────┘
+                           │
+                           │ Store in Walrus
+                           ▼
+┌──────────────────────────────────────────────────────────┐
+│                    Walrus Storage                         │
+│  blob_id: "0xabc123..."                                  │
+│  content: <full IGS intent JSON>                         │
+└──────────────────────────────────────────────────────────┘
+                           │
+                           │ Create on-chain reference
+                           ▼
+┌──────────────────────────────────────────────────────────┐
+│                   Sui Blockchain                          │
+│                                                           │
+│  IGSObject (On-chain Sui Object)                         │
+│  ├─ id: "0xdef456..."           (from Sui UID)          │
+│  ├─ user_address: "0x789..."    (from Sui owner)        │
+│  ├─ created_ts: 1699123456000   (from Clock)            │
+│  ├─ blob_id: "0xabc123..."      (→ Walrus)              │
+│  └─ policy: { ... }              (enforcement params)    │
+└──────────────────────────────────────────────────────────┘
+```
+
+**Design Philosophy:** 
+- **IGSIntent** = Pure intent specification (protocol-agnostic)
+- **IGSObject** = On-chain execution tracking (protocol-specific)
+- Separation of concerns: content vs. enforcement
 
 ### 2. Operation - The Heart of IGS
 
@@ -142,7 +197,9 @@ The **Expected Value** is derived from:
 
 ## Examples
 
-### Example 1: Simple Swap
+### Example 1: Simple Swap (IGSIntent - User Submission)
+
+This is what the user submits (pure intent, no on-chain fields):
 
 ```json
 {
@@ -183,8 +240,7 @@ The **Expected Value** is derived from:
     },
     "execution": {
       "mode": "top_n_with_best_incentive",
-      "show_top_n": 3,
-      "require_simulation": true
+      "show_top_n": 3
     }
   },
   "metadata": {
@@ -197,11 +253,41 @@ The **Expected Value** is derived from:
 }
 ```
 
-### Example 2: Limit Order
+**Corresponding IGSObject (On-chain Sui Object):**
+
+After submission, this is what exists on Sui blockchain:
 
 ```json
 {
-  "igs_version": "1.0.0",
+  "id": "0x1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890",
+  "user_address": "0x789abc123def456789abc123def456789abc123def456789abc123def456789a",
+  "created_ts": 1699123456000,
+  "blob_id": "0xabc123def456789012345678901234567890123456789012345678901234",
+  "policy": {
+    "solver_access_window": {
+      "start_ms": 1699123456000,
+      "end_ms": 1699123461000
+    },
+    "router_access_enabled": true,
+    "auto_revoke_time": 1699127056000,
+    "access_condition": {
+      "requires_solver_registration": true,
+      "min_solver_stake": "1000000000",
+      "requires_tee_attestation": false,
+      "expected_measurement": "",
+      "purpose": "Swap intent for batch processing"
+    }
+  }
+}
+```
+
+**Note:** Full intent content is in Walrus at `blob_id`. IGSObject only stores reference + policy enforcement.
+
+### Example 2: Limit Order (IGSIntent)
+
+```json
+{
+  "igs_version": "1.0.0", 
   "created_at": 1699123456000,
   "intent_type": "limit.sell",
   "description": "Sell 1000 SUI at $3.50 limit",
@@ -238,8 +324,7 @@ The **Expected Value** is derived from:
       "reputation_weight": 10
     },
     "execution": {
-      "mode": "best_solution",
-      "require_simulation": true
+      "mode": "best_solution"
     }
   },
   "metadata": {
@@ -281,42 +366,8 @@ function validateIGS(intent: IGSIntent): IGSValidationResult {
 
 ```typescript
 interface IGSSolution {
-  solution_id: string;
-  intent_id: string;
   solver_address: string;
-  submitted_at: number;
-  
-  // Execution details
-  execution: {
-    transaction_bytes: string;    // Serialized transaction
-    transaction_hash: string;     // Hash for verification
-    estimated_gas: string;        // Gas cost estimate
-  };
-  
-  // Promised outcomes
-  promised_outputs: Array<{
-    asset_id: string;
-    amount: string;
-  }>;
-  
-  // Surplus calculation (the key metric)
-  surplus_calculation: {
-    benchmark_value_usd: string;  // From intent's expected_outcome
-    solution_value_usd: string;   // Solver's promised value
-    surplus_usd: string;          // Difference (solution - benchmark)
-    surplus_percentage: string;   // Percentage improvement
-  };
-  
-  // Strategy information
-  strategy_summary: {
-    protocols_used: string[];     // DEXs, aggregators used
-    total_hops: number;           // Number of swaps
-    execution_path: string;       // Human-readable path
-  };
-  
-  // IGS compliance
-  compliance_score: number;       // 0-100, how well it follows IGS
-  compliance_details?: string[];  // Any warnings or issues
+  transaction_bytes: string;
 }
 ```
 
@@ -361,28 +412,44 @@ interface IGSRankedSolution {
 ### New Flow (MVP)
 
 ```
-1. User submits IGSIntent
+1. User submits IGSIntent (JSON)
    ↓
-2. Intent stored as IGSObject on-chain (gets object_id & owner)
+2. Protocol stores IGSIntent in Walrus
    ↓
-3. PreRankingEngine processes solutions:
+3. Protocol creates IGSObject on Sui:
+   - Gets id (UID) from Sui
+   - Sets user_address from tx sender
+   - Sets created_ts from Clock
+   - Stores blob_id (reference to Walrus)
+   - Initializes policy, status, pending_solutions
+   ↓
+4. Solvers fetch IGSIntent from Walrus (via blob_id)
+   ↓
+5. Solvers create and submit solutions (PTBs):
+   - Reference IGSObject.id
+   - Submit to Intent.pending_solutions
+   ↓
+6. PreRankingEngine processes solutions:
+   - Fetches IGSIntent from Walrus
    - Validates schema compliance
    - Checks constraints satisfaction
    - Converts to feature vectors
    - Runs Sui Dry Run simulation
    ↓
-4. Only solutions passing PreRanking continue
-   ↓
-5. RankingEngine ranks simulated solutions:
+7. RankingEngine ranks validated solutions:
    - Applies AI ranking based on features
    - Considers: surplus, gas, speed, reputation
    - Outputs based on execution mode
    ↓
-6. Returns result to user:
+8. Best solution stored in IGSObject.best_solution_id
+   ↓
+9. Returns result to user:
    - best_solution: Single best PTB
    - top_n_with_best_incentive: Top N PTBs (fee goes to best)
    ↓
-7. User executes chosen PTB (no auto-execution)
+10. User executes chosen PTB
+    ↓
+11. IGSObject.status updated to EXECUTED
 ```
 
 ### Key Differences from Legacy
@@ -447,11 +514,22 @@ type IGSExecutionMode =
 
 ### For the Frontend
 
-1. **Submit Intent**: Send IGSIntent (no intent_id/user_address needed).
-2. **Display Intent**: Show human-readable format of what user wants.
-3. **Show Rankings**: Display solutions from RankingEngine with explanations.
-4. **User Choice**: Allow user to select and execute PTB.
-5. **Execute**: User signs and broadcasts chosen transaction.
+1. **Submit Intent**: 
+   - User creates IGSIntent (no intent_id/user_address)
+   - Frontend sends to protocol
+   - Receives back IGSObject.id for tracking
+2. **Display Intent**: 
+   - Show human-readable format of what user wants
+   - Display IGSObject status (pending, best_selected, etc.)
+3. **Show Rankings**: 
+   - Display solutions from RankingEngine with explanations
+   - Show surplus, gas, execution path for each solution
+4. **User Choice**: 
+   - Allow user to select and sign PTB
+   - Chosen solution updates IGSObject.status
+5. **Track Execution**: 
+   - Monitor IGSObject for status updates
+   - Display final execution result
 
 ## IGS Ecosystem Integration
 
@@ -533,19 +611,29 @@ IGS v1.0 provides a solid foundation for intent-based DeFi:
 ### Adoption Path
 
 **For Protocols**:
-1. Adopt IGS as your intent format
-2. Implement your own execution layer (timing, validation, settlement)
-3. Benefit from ecosystem tools (AI routers, solvers, frontends)
+1. Adopt IGSIntent as your intent format
+2. Design your IGSObject on-chain structure (like Sui's Intent object)
+3. Implement execution layer (timing, validation, settlement)
+4. Benefit from ecosystem tools (AI routers, solvers, frontends)
 
 **For Solvers**:
-1. Parse IGS intents
-2. Generate IGS-compliant solutions
-3. Calculate and report surplus accurately
+1. Fetch IGSIntent from storage (e.g., Walrus via blob_id)
+2. Parse intent: operation, constraints, preferences
+3. Generate IGS-compliant solutions (PTBs)
+4. Calculate and report surplus accurately
+5. Submit solutions referencing IGSObject.id
 
 **For Frontends**:
-1. Generate IGS intents from user input
-2. Display solutions with standardized surplus metrics
-3. Support multiple protocols with one format
+1. Generate IGSIntent from user input (no need for intent_id/user_address)
+2. Submit to protocol (gets IGSObject.id back)
+3. Display solutions with standardized surplus metrics
+4. Support multiple protocols with one format
+
+**Key Insight:**
+- Users submit **IGSIntent** (pure intent JSON)
+- Protocol creates **IGSObject** (on-chain tracking)
+- Solvers fetch IGSIntent via blob_id, solve, submit to IGSObject
+- Clear separation: content (off-chain) vs tracking (on-chain)
 
 **Next Steps:**
 

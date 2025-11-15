@@ -110,13 +110,9 @@ describe('IGS AJV Validator', () => {
     it('should reject intent with expired deadline', () => {
       const expiredIntent = {
         ...EXAMPLE_SIMPLE_SWAP,
-        timing: {
-          ...EXAMPLE_SIMPLE_SWAP.timing,
-          absolute_deadline: Date.now() - 1000 // Past deadline
-        },
         constraints: {
           ...EXAMPLE_SIMPLE_SWAP.constraints,
-          deadline: Date.now() - 1000 // Past deadline
+          deadline_ms: Date.now() - 1000 // Past deadline
         }
       };
 

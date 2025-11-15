@@ -176,7 +176,7 @@ const intent = new IntentBuilder(userAddress)
     50                         // Max slippage (0.5%)
   )
   .private(true)               // Enable encryption
-  .constraints({
+  .constraints({ 
     deadline: Date.now() + 300000,
     max_slippage_bps: 50
   })

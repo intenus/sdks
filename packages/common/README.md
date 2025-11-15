@@ -53,7 +53,7 @@ const swapIntent: Intent = {
 
 Other key types include:
 - `Batch` & `BatchManifest`: Structures for grouping and describing batches of intents.
-- `SolutionSubmission` & `RankedPTB`: Data formats for solvers to submit solutions.
+- `SolutionSubmission`: Minimal solver payload containing `solver_address` and `transaction_bytes`.
 - **Walrus AI Types**: A complete set of types for AI/ML data infrastructure on Walrus, including `BatchArchive`, `UserHistoryAggregated`, `TrainingDatasetMetadata`, and `ModelMetadata`.
 
 ### Protocol Constants & Configuration
@@ -97,14 +97,15 @@ This package is intended to be used as a dependency in any project interacting w
 
 ### Solver Application
 ```typescript
-import type { Batch, SolutionSubmission, SolutionOutcome } from '@intenus/common';
+import type { Batch, SolutionSubmission } from '@intenus/common';
 
 class MySolver {
   processBatch(batch: Batch): SolutionSubmission {
-    // Implement solver logic with guaranteed type safety
-    const outcomes: SolutionOutcome[] = [];
-    // ...
-    return { /* ... solution submission object ... */ };
+    const transaction_bytes = buildMyPTB(batch);
+    return {
+      solver_address: '0xabc123...',
+      transaction_bytes,
+    };
   }
 }
 ```
