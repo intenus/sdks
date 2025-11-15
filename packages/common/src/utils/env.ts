@@ -1,6 +1,5 @@
 /**
  * Safe environment variable access utilities
- * Does NOT auto-load .env files - that's the application's responsibility
  */
 
 /**
