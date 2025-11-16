@@ -9,7 +9,7 @@ import { NETWORKS } from "@intenus/common";
 import {
   IntentStorageService,
   SolutionStorageService,
-  MLStorageService,
+  DatasetStorageService,
 } from "./services/index.js";
 import type { IntenusWalrusConfig, StorageResult } from "./types/index.js";
 import { WalrusStorageError, WalrusFetchError } from "./types/index.js";
@@ -21,7 +21,7 @@ export class IntenusWalrusClient {
 
   public readonly intents: IntentStorageService;
   public readonly solutions: SolutionStorageService;
-  public readonly ml: MLStorageService;
+  public readonly datasets: DatasetStorageService;
 
   constructor(config: IntenusWalrusConfig) {
     const networkConfig =
@@ -61,15 +61,14 @@ export class IntenusWalrusClient {
 
     this.intents = new IntentStorageService(this);
     this.solutions = new SolutionStorageService(this);
-    this.ml = new MLStorageService(this);
+    this.datasets = new DatasetStorageService(this);
   }
 
 
   /**
-   * Store raw data to Walrus
+   * Store raw data to Walrus (simple blob)
    */
   async storeRaw(
-    path: string,
     data: Buffer,
     epochs: number,
     signer: Signer
@@ -84,7 +83,6 @@ export class IntenusWalrusClient {
 
       return {
         blob_id: result.blobId,
-        path,
         size_bytes: data.length,
         created_at: Date.now(),
         epochs,

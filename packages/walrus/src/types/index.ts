@@ -33,7 +33,6 @@ export interface IntenusWalrusConfig {
 
 export interface StorageResult {
   blob_id: string;
-  path: string;
   size_bytes: number;
   created_at: number;
   epochs: number;
