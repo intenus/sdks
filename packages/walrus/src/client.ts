@@ -6,7 +6,6 @@ import { WalrusClient, WalrusClientConfig, walrus } from "@mysten/walrus";
 import { SuiClient } from "@mysten/sui/client";
 import type { Signer } from "@mysten/sui/cryptography";
 import { NETWORKS } from "@intenus/common";
-import { StoragePathBuilder } from "./utils/paths.js";
 import {
   IntentStorageService,
   SolutionStorageService,
