@@ -303,13 +303,3 @@ export function validateIGSSolution(data: unknown): { success: true; data: IGSSo
   }
   return { success: false, errors: result.error };
 }
-
-// ============================================================================
-// RE-EXPORTS FOR COMPATIBILITY
-// ============================================================================
-
-// Placeholder types for backward compatibility (will be removed after full migration)
-export type IGSRankedSolution = any;
-export type IGSValidationResult = any;
-export type IGSValidationError = any;
-export type IGSSolutionSubmission = any;

@@ -16,9 +16,6 @@ export type {
   IGSLimitPrice,
   IGSPolicy,
   IGSSolution,
-  IGSRankedSolution,
-  IGSValidationResult,
-  IGSValidationError,
 } from './igs.js';
 
 // Export Zod schemas for validation
