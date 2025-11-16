@@ -6,17 +6,15 @@ import { Signer } from '@mysten/sui/cryptography';
 import type { IntenusSealClient } from './client.js';
 import type {
   IntentEncryptionConfig,
-  StrategyEncryptionConfig,
-  HistoryEncryptionConfig,
-  SolverCredentials,
+  SolutionEncryptionConfig,
   EncryptionResult
 } from './types.js';
-import { fromHex, toHex } from '@mysten/sui/utils';
+import { toHex } from '@mysten/sui/utils';
 
 /**
- * Encrypt intent data with sensible defaults for batch processing.
+ * Encrypt intent data with sensible defaults.
  * Automatically generates policy ID and handles JSON serialization.
- * 
+ *
  * @param client - Initialized Seal client
  * @param intentData - Intent data object (will be JSON serialized)
  * @param batchId - Batch identifier for grouping
@@ -33,7 +31,7 @@ export async function encryptIntentData(
 ): Promise<EncryptionResult> {
   const protocolPackageId = client.getPackageId();
   const policyId = options?.policyId || generatePolicyId('intent', batchId);
-  
+
   const config: IntentEncryptionConfig = {
     packageId: protocolPackageId,
     policyId,
@@ -50,64 +48,36 @@ export async function encryptIntentData(
 }
 
 /**
- * Encrypt solver strategy with privacy protection.
- * Use this to keep solver algorithms and parameters confidential.
- * 
+ * Encrypt solver solution with privacy protection.
+ * Use this to keep solver solutions confidential.
+ *
  * @param client - Seal client instance
- * @param strategyData - Strategy configuration object
+ * @param solutionData - Solution data object
  * @param solverId - Unique solver identifier
  * @param signer - Solver's keypair
- * @param options - Strategy-specific encryption options
- * @returns Encrypted strategy result
+ * @param options - Solution-specific encryption options
+ * @returns Encrypted solution result
  */
-export async function encryptStrategyData(
+export async function encryptSolutionData(
   client: IntenusSealClient,
-  strategyData: any,
+  solutionData: any,
   solverId: string,
   signer: Signer,
-  options?: Partial<StrategyEncryptionConfig>
+  options?: Partial<SolutionEncryptionConfig>
 ): Promise<EncryptionResult> {
   const protocolPackageId = client.getPackageId();
-  const policyId = generatePolicyId('strategy', solverId);
-  
-  const config: StrategyEncryptionConfig = {
+  const policyId = generatePolicyId('solution', solverId);
+
+  const config: SolutionEncryptionConfig = {
     packageId: protocolPackageId,
     policyId,
     threshold: options?.threshold || client.getConfig().defaultThreshold || 2,
-    routerAccess: options?.routerAccess ?? false,
-    adminUnlockTime: options?.adminUnlockTime,
     isPublic: options?.isPublic ?? false,
     ttlMin: options?.ttlMin || 10
   };
 
-  const data = new TextEncoder().encode(JSON.stringify(strategyData));
-  return client.encryptStrategy(data, config, signer);
-}
-
-/**
- * Helper for history encryption with default config
- */
-export async function encryptHistoryData(
-  client: IntenusSealClient,
-  historyData: any,
-  userAddress: string,
-  signer: Signer,
-  options?: Partial<HistoryEncryptionConfig>
-): Promise<EncryptionResult> {
-  const protocolPackageId = client.getPackageId();
-  const policyId = generatePolicyId('history', userAddress);
-  
-  const config: HistoryEncryptionConfig = {
-    packageId: protocolPackageId,
-    policyId,
-    threshold: options?.threshold || client.getConfig().defaultThreshold || 2,
-    routerAccessLevel: options?.routerAccessLevel || 1,
-    userCanRevoke: options?.userCanRevoke ?? true,
-    ttlMin: options?.ttlMin || 10
-  };
-
-  const data = new TextEncoder().encode(JSON.stringify(historyData));
-  return client.encryptHistory(data, config, signer);
+  const data = new TextEncoder().encode(JSON.stringify(solutionData));
+  return client.encryptSolution(data, config, signer);
 }
 
 /**
@@ -116,63 +86,34 @@ export async function encryptHistoryData(
 export async function decryptIntentData(
   client: IntenusSealClient,
   encryptedData: Uint8Array,
-  policyId: string,
-  solverCredentials: SolverCredentials,
-  signer: Signer,
-  batchId?: string
+  intentObjectId: string,
+  signer: Signer
 ): Promise<any> {
   const decryptedBytes = await client.decryptIntent(
     encryptedData,
-    policyId,
-    solverCredentials,
-    signer,
-    batchId
-  );
-  
-  const decryptedText = new TextDecoder().decode(decryptedBytes);
-  return JSON.parse(decryptedText);
-}
-
-/**
- * Helper for strategy decryption with JSON parsing
- */
-export async function decryptStrategyData(
-  client: IntenusSealClient,
-  encryptedData: Uint8Array,
-  policyId: string,
-  solverCredentials: SolverCredentials,
-  signer: Signer
-): Promise<any> {
-  const decryptedBytes = await client.decryptStrategy(
-    encryptedData,
-    policyId,
-    solverCredentials,
+    intentObjectId,
     signer
   );
-  
+
   const decryptedText = new TextDecoder().decode(decryptedBytes);
   return JSON.parse(decryptedText);
 }
 
 /**
- * Helper for history decryption with JSON parsing
+ * Helper for solution decryption with JSON parsing
  */
-export async function decryptHistoryData(
+export async function decryptSolutionData(
   client: IntenusSealClient,
   encryptedData: Uint8Array,
-  policyId: string,
-  userAddress: string,
-  signer: Signer,
-  accessLevel?: number
+  solutionObjectId: string,
+  signer: Signer
 ): Promise<any> {
-  const decryptedBytes = await client.decryptHistory(
+  const decryptedBytes = await client.decryptSolution(
     encryptedData,
-    policyId,
-    userAddress,
-    signer,
-    accessLevel
+    solutionObjectId,
+    signer
   );
-  
+
   const decryptedText = new TextDecoder().decode(decryptedBytes);
   return JSON.parse(decryptedText);
 }
@@ -180,14 +121,14 @@ export async function decryptHistoryData(
 /**
  * Generate unique policy identifier from type and context.
  * Returns hex-encoded string suitable for Seal operations.
- * 
- * @param type - Policy type (intent, strategy, or history)
+ *
+ * @param type - Policy type (intent or solution)
  * @param identifier - Context identifier (batch ID, solver ID, etc)
  * @param timestamp - Optional timestamp (defaults to now)
  * @returns Hex-encoded policy ID
  */
 export function generatePolicyId(
-  type: 'intent' | 'strategy' | 'history',
+  type: 'intent' | 'solution',
   identifier: string,
   timestamp?: number
 ): string {
@@ -197,80 +138,30 @@ export function generatePolicyId(
 }
 
 /**
- * Parse policy ID to extract information
- */
-export function parsePolicyId(policyId: string): {
-  type: string;
-  identifier: string;
-  timestamp: number;
-} | null {
-  try {
-    const decoded = new TextDecoder().decode(fromHex(policyId));
-    const parts = decoded.split('_');
-    
-    if (parts.length >= 3) {
-      const type = parts[0];
-      const timestamp = parseInt(parts[parts.length - 1]);
-      const identifier = parts.slice(1, -1).join('_');
-      
-      return {
-        type,
-        identifier,
-        timestamp
-      };
-    }
-    
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Create solver credentials for authentication.
- * 
- * @param solverId - Unique solver identifier
- * @param privateKey - Solver's private key
- * @param registryId - Solver registry object ID
- * @returns Solver credentials object
- */
-export function createSolverCredentials(
-  solverId: string,
-  privateKey: string,
-  registryId: string
-): SolverCredentials {
-  return {
-    solverId,
-    privateKey,
-    registryId
-  };
-}
-
-/**
  * Validate encryption configuration before use.
  * Checks for required fields and valid threshold values.
- * 
+ *
  * @param config - Encryption configuration to validate
  * @returns True if config is valid
  */
 export function validateEncryptionConfig(
-  config: IntentEncryptionConfig | StrategyEncryptionConfig | HistoryEncryptionConfig
+  config: IntentEncryptionConfig | SolutionEncryptionConfig
 ): boolean {
   if (!config.packageId || !config.policyId) {
     return false;
   }
-  
+
   if (config.threshold < 1) {
     return false;
   }
-  
+
   return true;
 }
 
 /**
  * Convert various data formats to Uint8Array for encryption.
  * Handles strings, objects, numbers, and existing byte arrays.
- * 
+ *
  * @param data - Data in any format
  * @returns Data as Uint8Array
  */
@@ -278,21 +169,21 @@ export function prepareDataForEncryption(data: any): Uint8Array {
   if (data instanceof Uint8Array) {
     return data;
   }
-  
+
   if (typeof data === 'string') {
     return new TextEncoder().encode(data);
   }
-  
+
   if (typeof data === 'object') {
     return new TextEncoder().encode(JSON.stringify(data));
   }
-  
+
   return new TextEncoder().encode(String(data));
 }
 
 /**
  * Parse decrypted bytes into desired format.
- * 
+ *
  * @param decryptedBytes - Decrypted data as byte array
  * @param format - Target format: 'json', 'string', or 'bytes'
  * @returns Parsed data in specified format
@@ -304,14 +195,14 @@ export function parseDecryptedData(
   switch (format) {
     case 'string':
       return new TextDecoder().decode(decryptedBytes);
-    
+
     case 'json':
       const text = new TextDecoder().decode(decryptedBytes);
       return JSON.parse(text);
-    
+
     case 'bytes':
       return decryptedBytes;
-    
+
     default:
       return decryptedBytes;
   }

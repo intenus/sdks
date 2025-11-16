@@ -9,11 +9,9 @@ export type {
   KeyServerConfig,
   SealPolicyConfig,
   IntentEncryptionConfig,
-  StrategyEncryptionConfig,
-  HistoryEncryptionConfig,
+  SolutionEncryptionConfig,
   EncryptionResult,
   DecryptionRequest,
-  SolverCredentials,
   PolicyType,
   PolicyTypeValue
 } from './types.js';
@@ -32,14 +30,10 @@ export {
 
 export {
   encryptIntentData,
-  encryptStrategyData,
-  encryptHistoryData,
+  encryptSolutionData,
   decryptIntentData,
-  decryptStrategyData,
-  decryptHistoryData,
+  decryptSolutionData,
   generatePolicyId,
-  parsePolicyId,
-  createSolverCredentials,
   validateEncryptionConfig,
   prepareDataForEncryption,
   parseDecryptedData
