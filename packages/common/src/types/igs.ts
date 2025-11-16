@@ -303,3 +303,31 @@ export function validateIGSSolution(data: unknown): { success: true; data: IGSSo
   }
   return { success: false, errors: result.error };
 }
+
+// ============================================================================
+// BACKWARD COMPATIBILITY TYPES
+// ============================================================================
+
+/**
+ * Validation error structure (for AJV validator compatibility)
+ */
+export interface IGSValidationError {
+  code: string;
+  field: string;
+  message: string;
+  severity: 'error' | 'warning';
+}
+
+/**
+ * Validation result structure (for AJV validator compatibility)
+ */
+export interface IGSValidationResult {
+  valid: boolean;
+  errors: IGSValidationError[];
+  warnings: string[];
+  compliance_score?: number;
+}
+
+// Placeholder types for backward compatibility (will be removed after full migration)
+export type IGSRankedSolution = any;
+export type IGSSolutionSubmission = any;

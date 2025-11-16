@@ -1,19 +1,22 @@
 // Export main classes
 export { SolverListener } from './listener.js';
-export { P2PMatcher } from './matcher.js';
+// Note: P2PMatcher removed - solvers implement their own matching logic
+// export { P2PMatcher } from './matcher.js';
 export { SolutionBuilder } from '@intenus/common';
 
-// Export IGS classes
-export { 
-  IGSSolutionBuilder,
-  createIGSSolutionBuilder,
-  validateIGSSolution,
-  compareIGSSolutions
-} from './igs-builder.js';
+// Export IGS classes - Removed: solvers implement their own solution building
+// export {
+//   IGSSolutionBuilder,
+//   createIGSSolutionBuilder,
+//   validateIGSSolution,
+//   compareIGSSolutions
+// } from './igs-builder.js';
 
 // Export types
-export type { P2PMatch } from './matcher.js';
-export type { IGSSolutionBuilderOptions } from './igs-builder.js';
+// Note: P2PMatch removed - solvers implement their own matching logic
+// export type { P2PMatch } from './matcher.js';
+// Note: IGSSolutionBuilderOptions removed - solvers implement their own solution building
+// export type { IGSSolutionBuilderOptions } from './igs-builder.js';
 
 // Export utilities
 export { addP2PTransfer, getSealPolicyForIntent, hashBytes } from './utils.js';

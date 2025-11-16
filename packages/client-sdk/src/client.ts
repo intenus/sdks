@@ -9,7 +9,7 @@ import { INTENUS_PACKAGE_ID } from './constants.js';
 import {
   SolverRegistryService,
   SealPolicyService,
-  BatchManagerService,
+  // BatchManagerService, // Removed - batch concept deprecated
   SlashManagerService
 } from './services/index.js';
 import type { IntenusClientConfig, IntenusClientError } from './types.js';
@@ -20,7 +20,7 @@ export class IntenusProtocolClient {
   // Service instances
   public readonly solvers: SolverRegistryService;
   public readonly policies: SealPolicyService;
-  public readonly batches: BatchManagerService;
+  // public readonly batches: BatchManagerService; // Removed - batch concept deprecated
   public readonly slashing: SlashManagerService;
 
   constructor(config: IntenusClientConfig) {
@@ -51,7 +51,7 @@ export class IntenusProtocolClient {
     // Initialize services
     this.solvers = new SolverRegistryService(this.suiClient, this.config);
     this.policies = new SealPolicyService(this.suiClient, this.config);
-    this.batches = new BatchManagerService(this.suiClient, this.config);
+    // this.batches = new BatchManagerService(this.suiClient, this.config); // Removed - batch concept deprecated
     this.slashing = new SlashManagerService(this.suiClient, this.config);
   }
 
@@ -129,20 +129,15 @@ export class IntenusProtocolClient {
     };
   }> {
     try {
-      const [registryStats, currentBatch, epochInfo] = await Promise.all([
+      const [registryStats, epochInfo] = await Promise.all([
         this.solvers.getRegistryStats(),
-        this.batches.getCurrentBatch(),
+        // this.batches.getCurrentBatch(), // Removed - batch concept deprecated
         this.getCurrentEpoch()
       ]);
 
       return {
         registry: registryStats,
-        current_batch: currentBatch ? {
-          batch_id: currentBatch.batch_id,
-          intent_count: currentBatch.intent_count,
-          solver_count: currentBatch.solver_count,
-          status: currentBatch.status
-        } : undefined,
+        current_batch: undefined, // Removed - batch concept deprecated
         network: {
           epoch: epochInfo.epoch,
           timestamp: epochInfo.epochStartTimestamp
@@ -226,18 +221,18 @@ export class IntenusProtocolClient {
         this.slashing.getSlashRecords(solverAddress)
       ]);
 
-      // Get recent batch history
-      const currentEpoch = parseInt((await this.getCurrentEpoch()).epoch);
-      const recentBatches = await this.batches.getBatchHistory(
-        Math.max(0, currentEpoch - 10), 
-        currentEpoch
-      );
+      // Get recent batch history - Removed: batch concept deprecated
+      // const currentEpoch = parseInt((await this.getCurrentEpoch()).epoch);
+      // const recentBatches = await this.batches.getBatchHistory(
+      //   Math.max(0, currentEpoch - 10),
+      //   currentEpoch
+      // );
 
       return {
         profile,
         eligibility,
         slash_records: slashRecords,
-        recent_batches: recentBatches
+        recent_batches: [] // Removed - batch concept deprecated
       };
     } catch (error: any) {
       throw new Error(`Failed to get solver dashboard: ${error.message}`);
