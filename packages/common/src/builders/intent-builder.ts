@@ -1,4 +1,4 @@
-import { Intent, IGSIntentType } from "../types";
+import { IGSIntent } from "../types/igs";
 
 /**
  * Fluent API for building IGS intents
@@ -14,32 +14,15 @@ import { Intent, IGSIntentType } from "../types";
  *   .build();
  */
 export class IntentBuilder {
-  private intent: Intent;
+  private intent: IGSIntent;
 
-  constructor(userAddress: string) {
+  constructor(intent: IGSIntent) {
     this.intent = {
       igs_version: '1.0.0',
       intent_id: crypto.randomUUID(),
-      user_address: userAddress,
-      created_at: Date.now(),
-      intent_type: 'swap.exact_input',
-      description: '',
-      operation: {
-        mode: 'exact_input',
-        inputs: [],
-        outputs: [],
-        expected_outcome: {
-          expected_outputs: [],
-          expected_costs: {
-            gas_estimate: '0.01',
-          },
-          benchmark: {
-            source: 'client_sdk',
-            timestamp: Date.now(),
-            confidence: 0.8,
-          },
-        },
-      },
+      user_address: intent.user_address,
+      created_ms: Date.now(),
+      blob_id: intent.blob_id,
       constraints: {
         deadline: Date.now() + 300000,
         max_slippage_bps: 50,
@@ -439,7 +422,7 @@ export class IntentBuilder {
    * Build the final IGS intent
    * @returns Complete IGS intent ready for submission
    */
-  build(): Intent {
+  build(): IGSIntent {
     return this.intent;
   }
 }

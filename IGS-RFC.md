@@ -337,7 +337,7 @@ interface IGSRankedSolution {
 ### For Solvers
 
 1. **Parse IGS Intent**: Understand the operation, constraints, and preferences.
-2. **Generate Solution**: Create a PTB that satisfies the constraints.
+2. **Generate Solution**: Create a Tx that satisfies the constraints.
 3. **Calculate Surplus**: Compare the outcome against the `expected_outcome`.
 4. **Submit IGS Solution**: Format the solution with a compliance score.
 

@@ -16,7 +16,7 @@ export {
 export type {
   IntenusClientConfig,
   SolverProfile,
-  RankedPTB,
+  RankedTx,
   BatchSummary,
   SlashEvidence,
   SlashRecord,
@@ -49,7 +49,7 @@ export {
   ERROR_CODES,
   DEFAULT_CONFIG
 } from './constants.js';
-export { PTBExecutor } from './executor.js';
+export { TxExecutor } from './executor.js';
 export { WalrusIntentHelper } from './walrus-helper.js';
 
 // Re-export common types for convenience

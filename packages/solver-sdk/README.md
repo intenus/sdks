@@ -11,7 +11,7 @@ npm install @intenus/solver-sdk @mysten/sui @intenus/common
 ## Features
 
 - **Batch Listener** - Redis subscriptions for batch notifications
-- **Solution Builder** - Helper for building PTB-based solutions
+- **Solution Builder** - Helper for building Tx-based solutions
 - **IGS Builder** - Construct IGS solutions from intents
 - **P2P Matcher** - Match peer-to-peer swaps
 - **Type Safety** - Full TypeScript support with IGS types
@@ -49,14 +49,14 @@ import { SuiClient } from '@mysten/sui/client';
 const client = new SuiClient({ url: 'https://testnet.sui.io' });
 const builder = new SolutionBuilder(intentId, solverAddress);
 
-// Add PTB operations
-builder.getPTB().moveCall({
+// Add Tx operations
+builder.getTx().moveCall({
   target: '0x2::sui::split',
   arguments: [/* ... */]
 });
 
 // Build submission
-const { submission, ptbBytes } = await builder.build({ client });
+const { submission, txBytes } = await builder.build({ client });
 
 // Submit to chain or backend
 ```

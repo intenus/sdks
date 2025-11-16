@@ -243,8 +243,8 @@ describe('Walrus Integration Tests (Testnet)', () => {
         intent_id: `intent_${Date.now()}`,
         solver_address: signer.getPublicKey().toSuiAddress(),
         submitted_at: Date.now(),
-        ptb_bytes: '0xdeadbeef',
-        ptb_hash: '0xhash',
+        tx_bytes: '0xdeadbeef',
+        tx_hash: '0xhash',
         promised_outputs: [
           {
             asset_id: 'native',

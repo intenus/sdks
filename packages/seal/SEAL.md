@@ -54,7 +54,7 @@ entry fun seal_approve(id: vector<u8>, cnt1: &Counter, cnt2: &Counter) {
 
 - `seal_approve*` functions must be side-effect free and cannot modify onchain state.
 - Although the `Random` module is available, its output is not secure and not deterministic across full nodes. Avoid using it within `seal_approve*` functions.
-- During Seal evaluation, only `seal_approve*` functions can be invoked directly. These functions should not assume composition with other [PTB (Programmable Transaction Block)](https://docs.sui.io/concepts/transactions/prog-txn-blocks) commands.
+- During Seal evaluation, only `seal_approve*` functions can be invoked directly. These functions should not assume composition with other [Tx (Programmable Transaction Block)](https://docs.sui.io/concepts/transactions/prog-txn-blocks) commands.
 
 ## Encryption
 
@@ -189,7 +189,7 @@ Seal evaluates the transaction as if the user sent it. In Move, `TxContext::send
 
 The `SealClient` caches keys retrieved from Seal key servers to optimize performance during subsequent decryptions, especially when the same id is used across multiple encryptions. Reusing the same client instance helps reduce backend calls and improve latency. Refer to overall [Performance Recommendations](#optimizing-performance).
 
-To retrieve multiple keys more efficiently, use the `fetchKeys` function with a multi-command PTB. This approach is recommended when multiple keys are required, as it reduces the number of requests to the key servers. Because key servers may apply rate limiting, developers should design their applications and access policies to minimize the frequency of key retrieval requests.
+To retrieve multiple keys more efficiently, use the `fetchKeys` function with a multi-command Tx. This approach is recommended when multiple keys are required, as it reduces the number of requests to the key servers. Because key servers may apply rate limiting, developers should design their applications and access policies to minimize the frequency of key retrieval requests.
 
 ```typescript
 await client.fetchKeys({
@@ -203,7 +203,7 @@ await client.fetchKeys({
 Check out our [integration tests](https://github.com/MystenLabs/ts-sdks/blob/main/packages/seal/test/unit/integration.test.ts)  for a full end-to-end example. You can also explore the [example app](https://github.com/MystenLabs/seal/tree/main/examples) to see how to implement allowlist and NFT-gated content access in practice.
 
 !!! tip
-    If a key server request fails with an `InvalidParameter` error, the cause may be a recently created on-chain object in the PTB input. The key server's full node may not have indexed it yet. Wait a few seconds and retry the request, as subsequent attempts should succeed once the node is in sync.
+    If a key server request fails with an `InvalidParameter` error, the cause may be a recently created on-chain object in the Tx input. The key server's full node may not have indexed it yet. Wait a few seconds and retry the request, as subsequent attempts should succeed once the node is in sync.
 
 ### On-chain decryption
 
@@ -323,7 +323,7 @@ To reduce latency and improve efficiency when using the Seal SDK, apply the foll
 - **Reuse the `SealClient` instance**: The client caches retrieved keys and fetches necessary onchain objects during initialization. Reusing it prevents redundant setup work.
 - **Reuse the `SessionKey`**: You can keep a session key active for a fixed duration to avoid prompting users multiple times. This also reuses previously fetched objects.
 - **Disable key server verification when not required**: Set `verifyKeyServers: false` unless you explicitly need to validate key server URLs. Skipping verification saves round-trip latency during initialization.
-- **Include fully specified objects in PTBs**:  When creating programmable transaction blocks, pass complete object references (with versions). This reduces object resolution calls by a key server to the Sui Full node.
+- **Include fully specified objects in Txs**:  When creating programmable transaction blocks, pass complete object references (with versions). This reduces object resolution calls by a key server to the Sui Full node.
 - **Avoid unnecessary key retrievals**: Reuse existing encrypted keys whenever possible and rely on the SDK’s internal caching to reduce overhead.
 - **[Advanced] Use `fetchKeys()` for batch decryption**: Call `fetchKeys()` when retrieving multiple decryption keys. This groups requests and minimizes interactions with key servers.
 

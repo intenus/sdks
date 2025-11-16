@@ -1,23 +1,23 @@
 import { Transaction } from '@mysten/sui/transactions';
 
 /**
- * OPTIONAL: Helper functions for Sui PTB operations
+ * OPTIONAL: Helper functions for Sui Tx operations
  * Solvers can use Sui SDK directly if preferred
  */
 
 /**
- * Add P2P transfer to PTB
+ * Add P2P transfer to Tx
  */
 export function addP2PTransfer(
-  ptb: Transaction,
+  tx: Transaction,
   from: string,
   to: string,
   coinType: string,
   amount: string
 ): void {
   // Note: This is a simplified example. Real implementation should use proper Sui SDK methods
-  // const [coin] = ptb.splitCoins(ptb.gas, [ptb.pure(amount)]);
-  // ptb.transferObjects([coin], ptb.pure(to));
+  // const [coin] = tx.splitCoins(tx.gas, [tx.pure(amount)]);
+  // tx.transferObjects([coin], tx.pure(to));
   
   // TODO: Update with correct Sui SDK v1.44+ API
   throw new Error('addP2PTransfer needs to be updated for Sui SDK v1.44+');

@@ -44,8 +44,8 @@ export enum SolverStatus {
 /**
  * Ranked Programmable Transaction Block
  */
-export interface RankedPTB {
-  ptb_bytes: string; // Base64 encoded PTB
+export interface RankedTx {
+  tx_bytes: string; // Base64 encoded Tx
   rank: number;
   solver_address: string;
   solution_id: string;

@@ -1,15 +1,10 @@
-// IGS (Intenus General Standard) - Primary Intent Types
 export type {
-  IGSIntent as Intent, // Alias for backward compatibility
-  IGSIntentType,
+  IGSIntent,
+  IGSObject,
   IGSOperation,
-  IGSAssetFlow as AssetSpec, // Alias for backward compatibility
-  IGSAmount,
-  IGSExpectedOutcome,
-  IGSConstraints as Constraints, // Alias for backward compatibility
-  IGSPreferences as ExecutionPreferences, // Alias for backward compatibility
-  IGSTiming,
-  IGSMetadata as IntentMetadata, // Alias for backward compatibility
+  IGSConstraints,
+  IGSPreferences,
+  IGSMetadata,
   IGSSolution,
   IGSRankedSolution,
   IGSValidationResult,
@@ -39,22 +34,13 @@ export type {
   ClassificationInference,
 } from './dataset.js';
 
-// Export IGS utilities and examples
-export {
-  EXAMPLE_SIMPLE_SWAP,
-  EXAMPLE_LIMIT_ORDER,
-  migrateToIGS,
-  validateIGS,
-  calculateSurplus,
-} from './igs.js';
-
 // IGS Validation
 export {
   IGSSchemaValidator,
   validateIGSIntent,
   isValidIGSIntent,
   assertValidIGSIntent,
-  validateIGSJSON,
+  validateIGSJSON,  
   parseIGSIntent,
   getAJVValidator,
   getAJVInstance,

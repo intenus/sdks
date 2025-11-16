@@ -27,7 +27,7 @@
         },
         "blob_id": {
           "type": "string",
-          "description": "PTB transaction bytes reference"
+          "description": "Tx transaction bytes reference"
         }
       }
     },

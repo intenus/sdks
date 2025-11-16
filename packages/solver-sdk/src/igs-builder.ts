@@ -20,7 +20,7 @@ export interface IGSSolutionBuilderOptions {
 }
 
 export class IGSSolutionBuilder {
-  private ptb: Transaction;
+  private tx: Transaction;
   private promised_outputs: Array<{ asset_id: string; amount: string }> = [];
   private estimated_gas: string = '0';
   private estimated_slippage_bps: number = 0;
@@ -40,7 +40,7 @@ export class IGSSolutionBuilder {
     private intent: IGSIntent,
     private options: IGSSolutionBuilderOptions
   ) {
-    this.ptb = new Transaction();
+    this.tx = new Transaction();
     
     // Validate IGS intent first
     const validation = this.validateIntent();
@@ -59,10 +59,10 @@ export class IGSSolutionBuilder {
   }
 
   /**
-   * Get the underlying PTB for custom modifications
+   * Get the underlying Tx for custom modifications
    */
-  getPTB(): Transaction {
-    return this.ptb;
+  getTx(): Transaction {
+    return this.tx;
   }
 
   /**
@@ -128,14 +128,14 @@ export class IGSSolutionBuilder {
    */
   async build(options?: { client?: any }): Promise<{
     solution: IGSSolution;
-    ptbBytes: Uint8Array;
+    txBytes: Uint8Array;
   }> {
-    // Build PTB
-    const ptbBytes = options?.client 
-      ? await this.ptb.build({ client: options.client })
+    // Build Tx
+    const txBytes = options?.client 
+      ? await this.tx.build({ client: options.client })
       : new Uint8Array(); // Placeholder - real implementation needs client
     
-    const ptbHash = await this.hashPTB(ptbBytes);
+    const txHash = await this.hashTx(txBytes);
 
     // Calculate surplus
     const surplus = this.calculateSurplus();
@@ -149,8 +149,8 @@ export class IGSSolutionBuilder {
       solver_address: this.options.solver_address,
       submitted_at: Date.now(),
 
-      ptb_bytes: Array.from(ptbBytes).map(b => b.toString(16).padStart(2, '0')).join(''),
-      ptb_hash: ptbHash,
+      tx_bytes: Array.from(txBytes).map(b => b.toString(16).padStart(2, '0')).join(''),
+      tx_hash: txHash,
 
       promised_outputs: this.promised_outputs,
 
@@ -166,7 +166,7 @@ export class IGSSolutionBuilder {
       compliance_details: this.getComplianceDetails()
     };
 
-    return { solution, ptbBytes };
+    return { solution, txBytes };
   }
 
   /**
@@ -315,7 +315,7 @@ export class IGSSolutionBuilder {
     return details;
   }
 
-  private async hashPTB(bytes: Uint8Array): Promise<string> {
+  private async hashTx(bytes: Uint8Array): Promise<string> {
     const hashBuffer = await crypto.subtle.digest('SHA-256', bytes as BufferSource);
     return Array.from(new Uint8Array(hashBuffer))
       .map(b => b.toString(16).padStart(2, '0'))

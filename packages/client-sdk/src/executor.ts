@@ -1,24 +1,24 @@
 import { Transaction } from '@mysten/sui/transactions';
 import { SuiClient } from '@mysten/sui/client';
-import type { RankedPTB } from './types.js';
+import type { RankedTx } from './types.js';
 
 /**
- * OPTIONAL: Helper for executing ranked PTBs
+ * OPTIONAL: Helper for executing ranked Txs
  * Clients can use Sui SDK directly if preferred
  */
-export class PTBExecutor {
+export class TxExecutor {
   constructor(private suiClient: SuiClient) {}
   
   /**
-   * Execute a ranked PTB
+   * Execute a ranked Tx
    */
   async execute(
-    rankedPTB: RankedPTB,
+    rankedTx: RankedTx,
     signer: any // Wallet signer
   ): Promise<string> {
-    // Deserialize PTB
-    const ptbBytes = Buffer.from(rankedPTB.ptb_bytes, 'base64');
-    const txb = Transaction.from(ptbBytes);
+    // Deserialize Tx
+    const txBytes = Buffer.from(rankedTx.tx_bytes, 'base64');
+    const txb = Transaction.from(txBytes);
     
     // Sign transaction
     const { signature } = await signer.signTransactionBlock({
@@ -43,11 +43,11 @@ export class PTBExecutor {
   }
   
   /**
-   * Simulate PTB execution (dry run)
+   * Simulate Tx execution (dry run)
    */
-  async simulate(rankedPTB: RankedPTB): Promise<any> {
-    const ptbBytes = Buffer.from(rankedPTB.ptb_bytes, 'base64');
-    const txb = Transaction.from(ptbBytes);
+  async simulate(rankedTx: RankedTx): Promise<any> {
+    const txBytes = Buffer.from(rankedTx.tx_bytes, 'base64');
+    const txb = Transaction.from(txBytes);
     
     return await this.suiClient.dryRunTransactionBlock({
       transactionBlock: await txb.build(),
@@ -55,10 +55,10 @@ export class PTBExecutor {
   }
   
   /**
-   * Get gas estimation for PTB
+   * Get gas estimation for Tx
    */
-  async estimateGas(rankedPTB: RankedPTB): Promise<string> {
-    const simulation = await this.simulate(rankedPTB);
+  async estimateGas(rankedTx: RankedTx): Promise<string> {
+    const simulation = await this.simulate(rankedTx);
     return simulation.effects.gasUsed.computationCost.toString();
   }
 }

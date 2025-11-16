@@ -156,7 +156,7 @@ const intent = new IntentBuilder()
 import type {
   IntenusClientConfig,
   SolverProfile,
-  RankedPTB,
+  RankedTx,
   BatchSummary,
   SlashEvidence,
   SlashRecord,

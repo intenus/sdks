@@ -96,16 +96,16 @@ listener.onNewBatch(async (batch, manifest) => {
 
 ### Client Application
 
-This example shows how to use `IntentBuilder` to create an intent and `PTBExecutor` to sign and execute a transaction.
+This example shows how to use `IntentBuilder` to create an intent and `TxExecutor` to sign and execute a transaction.
 
 ```typescript
-import { IntentBuilder, PTBExecutor } from '@intenus/client-sdk';
+import { IntentBuilder, TxExecutor } from '@intenus/client-sdk';
 import { SuiClient } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
 // 1. Initialize Client and Executor
 const suiClient = new SuiClient({ url: 'https://fullnode.testnet.sui.io' });
-const executor = new PTBExecutor(suiClient);
+const executor = new TxExecutor(suiClient);
 const userAddress = '0x...'; // User's Sui address
 const keypair = new Ed25519Keypair(); // User's keypair for signing
 
@@ -118,10 +118,10 @@ const intent = new IntentBuilder(userAddress)
 // 3. Submit Intent to the protocol (via your backend)
 // ...
 
-// 4. Execute a Ranked Programmable Transaction Block (PTB)
-// (Assuming you received a rankedPTB from the Intenus network)
-const rankedPTB = { /* ... received from Intenus ... */ };
-const result = await executor.execute(rankedPTB, keypair);
+// 4. Execute a Ranked Programmable Transaction Block (Tx)
+// (Assuming you received a rankedTx from the Intenus network)
+const rankedTx = { /* ... received from Intenus ... */ };
+const result = await executor.execute(rankedTx, keypair);
 
 console.log('Execution successful, digest:', result.digest);
 ```

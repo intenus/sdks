@@ -15,7 +15,7 @@ import { Transaction } from '@mysten/sui/transactions';
  *   .build();
  */
 export class SolutionBuilder {
-  private ptb: Transaction;
+  private tx: Transaction;
   private promisedOutputs: Array<{ asset_id: string; amount: string }> = [];
   private estimatedGas: string = '0.01';
   private estimatedSlippageBps: number = 0;
@@ -40,14 +40,14 @@ export class SolutionBuilder {
     private intentId: string,
     private solverAddress: string
   ) {
-    this.ptb = new Transaction();
+    this.tx = new Transaction();
   }
 
   /**
-   * Get the underlying PTB for custom modifications
+   * Get the underlying Tx for custom modifications
    */
-  getPTB(): Transaction {
-    return this.ptb;
+  getTx(): Transaction {
+    return this.tx;
   }
 
   /**
@@ -175,17 +175,17 @@ export class SolutionBuilder {
 
   /**
    * Build final IGS solution
-   * @param options - Build options including SuiClient for PTB serialization
+   * @param options - Build options including SuiClient for Tx serialization
    * @returns Complete IGS solution ready for submission
    */
   async build(options?: { client?: any }): Promise<IGSSolution> {
-    // Build PTB bytes (requires SuiClient in production)
-    const ptbBytes = options?.client
-      ? await this.ptb.build({ client: options.client })
+    // Build Tx bytes (requires SuiClient in production)
+    const txBytes = options?.client
+      ? await this.tx.build({ client: options.client })
       : new Uint8Array(); // Placeholder - real implementation needs client
 
-    const ptbHex = Buffer.from(ptbBytes).toString('hex');
-    const ptbHash = this.hashPTB(ptbHex);
+    const txHex = Buffer.from(txBytes).toString('hex');
+    const txHash = this.hashTx(txHex);
 
     // Calculate compliance score based on completeness
     const complianceScore = this.calculateComplianceScore();
@@ -195,8 +195,8 @@ export class SolutionBuilder {
       intent_id: this.intentId,
       solver_address: this.solverAddress,
       submitted_at: Date.now(),
-      ptb_bytes: ptbHex,
-      ptb_hash: ptbHash,
+      tx_bytes: txHex,
+      tx_hash: txHash,
       promised_outputs: this.promisedOutputs,
       estimated_gas: this.estimatedGas,
       estimated_slippage_bps: this.estimatedSlippageBps,
@@ -217,15 +217,15 @@ export class SolutionBuilder {
   /**
    * Build final solution submission (legacy format)
    * @param options - Build options including SuiClient
-   * @returns Solution submission and PTB bytes
+   * @returns Solution submission and Tx bytes
    * @deprecated Use build() instead for full IGS solution
    */
   async buildSubmission(options?: { client?: any }): Promise<{
     submission: SolutionSubmission;
-    ptbBytes: Uint8Array;
+    txBytes: Uint8Array;
   }> {
-    const ptbBytes = options?.client
-      ? await this.ptb.build({ client: options.client })
+    const txBytes = options?.client
+      ? await this.tx.build({ client: options.client })
       : new Uint8Array();
 
     const submission: SolutionSubmission = {
@@ -233,10 +233,10 @@ export class SolutionBuilder {
       intent_id: this.intentId,
       solver_address: this.solverAddress,
       submitted_at: Date.now(),
-      blob_id: Buffer.from(ptbBytes).toString('base64'),
+      blob_id: Buffer.from(txBytes).toString('base64'),
     };
 
-    return { submission, ptbBytes };
+    return { submission, txBytes };
   }
 
   /**
@@ -258,13 +258,13 @@ export class SolutionBuilder {
   }
 
   /**
-   * Generate hash for PTB bytes
-   * @param ptbHex - PTB bytes in hex format
-   * @returns Hash of the PTB
+   * Generate hash for Tx bytes
+   * @param txHex - Tx bytes in hex format
+   * @returns Hash of the Tx
    * @private
    */
-  private hashPTB(ptbHex: string): string {
+  private hashTx(txHex: string): string {
     // Simple hash implementation - in production use proper crypto hash
-    return `0x${Buffer.from(ptbHex).toString('base64').substring(0, 64)}`;
+    return `0x${Buffer.from(txHex).toString('base64').substring(0, 64)}`;
   }
 }

@@ -4,7 +4,6 @@
  * ============================================================================
  */
 
-import { IGSValidationError } from "./igs";
 /**
  * ============================================================================
  * INTENT
@@ -51,7 +50,7 @@ export interface SolutionSubmission {
   solver_address: string;
   /** Submission timestamp */
   submitted_at: number;
-  /** PTB transaction bytes reference (fetched from on-chain when needed) */
+  /** Tx transaction bytes reference (fetched from on-chain when needed) */
   blob_id?: string;
 }
 
@@ -114,7 +113,7 @@ export interface PreRankingResult {
   failed_solution_ids: Array<{
     solution_id: string;
     failure_reason: string;
-    errors: IGSValidationError[];
+    errors: any[];
   }>;
 
   /** Feature vectors for passed solutions (for ranking) */
