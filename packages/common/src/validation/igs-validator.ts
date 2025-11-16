@@ -5,7 +5,7 @@
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import type { IGSIntent, IGSValidationResult, IGSValidationError } from '../types/igs.js';
-import igsSchema from '../schemas/igs-schema.json' assert { type: 'json' };
+import igsSchema from '../schemas/igs-intent-schema.json' assert { type: 'json' };
 
 const ajv = new Ajv({ 
   allErrors: true,

@@ -1,143 +1,348 @@
 # @intenus/common
 
-The `@intenus/common` package is the foundational module for the Intenus SDK ecosystem. It provides a comprehensive set of shared TypeScript type definitions, protocol constants, and essential utilities. This package has zero runtime dependencies, ensuring it can be used in any environment without adding bloat.
+Core TypeScript type definitions and JSON schemas for the Intenus Protocol.
 
 ## Installation
+
 ```bash
 npm install @intenus/common
 ```
 
-## Purpose
+## Overview
 
-This package serves as the single source of truth for all data structures within the Intenus Protocol. By centralizing these core definitions, it ensures consistency and type safety across all client, solver, and backend implementations.
+This package provides:
+- **TypeScript Types**: Complete type definitions for IGS (Intenus General Standard), intent classification, and ML datasets
+- **JSON Schemas**: JSON Schema (Draft 07) definitions for cross-language compatibility
+- **Zero Dependencies**: Lightweight and portable across all environments
 
-## Core Exports
+## Type Definitions
 
-### Type Definitions
+### IGS (Intenus General Standard)
 
-The package exports a rich set of types covering the entire protocol lifecycle.
+Core intent and solution types for DeFi operations.
 
-**Example: Core `Intent` (IGS) Structure**
 ```typescript
-import type { Intent } from '@intenus/common';
+import type { IGSIntent, IGSSolution } from '@intenus/common';
 
-const swapIntent: Intent = {
+const swapIntent: IGSIntent = {
   igs_version: '1.0.0',
-  intent_id: 'd8f8a8-....',
+  intent_id: 'intent_001',
   user_address: '0x...',
   created_at: Date.now(),
   intent_type: 'swap.exact_input',
-  description: 'Swap 1 SUI for USDC',
+  description: 'Swap 100 SUI to USDC',
   operation: {
     mode: 'exact_input',
     inputs: [{
       asset_id: '0x2::sui::SUI',
       asset_info: { symbol: 'SUI', decimals: 9 },
-      amount: { type: 'exact', value: '1000000' }
+      amount: { type: 'exact', value: '100000000000' }
     }],
     outputs: [{
       asset_id: '0x...::usdc::USDC',
       asset_info: { symbol: 'USDC', decimals: 6 },
-      amount: { type: 'range', min: '0', max: '9999999999' }
+      amount: { type: 'exact', value: '300000000' }
     }],
-    expected_outcome: { /* ... */ }
+    expected_outcome: { /* benchmark data */ }
   },
   constraints: {
     deadline: Date.now() + 300000,
     max_slippage_bps: 50,
-    min_outputs: [{ asset_id: '0x...::usdc::USDC', amount: '0' }]
+    min_outputs: [{ asset_id: '0x...::usdc::USDC', amount: '298500000' }]
   },
-  // ... and other properties
+  preferences: { /* optimization preferences */ },
+  timing: { /* execution timing */ },
+  metadata: { /* additional context */ }
 };
 ```
 
-Other key types include:
-- `Batch` & `BatchManifest`: Structures for grouping and describing batches of intents.
-- `SolutionSubmission` & `RankedPTB`: Data formats for solvers to submit solutions.
-- **Walrus AI Types**: A complete set of types for AI/ML data infrastructure on Walrus, including `BatchArchive`, `UserHistoryAggregated`, `TrainingDatasetMetadata`, and `ModelMetadata`.
+**Available IGS Types:**
+- `IGSIntent` - User intent specification
+- `IGSIntentType` - Intent operation types (swap/limit)
+- `IGSOperation` - Operation details (inputs/outputs)
+- `IGSConstraints` - Hard constraints
+- `IGSPreferences` - Soft preferences
+- `IGSTiming` - Timing specifications
+- `IGSSolution` - Solver-submitted solution
+- `IGSValidationResult` - Validation results
 
-### Protocol Constants & Configuration
+### Core Types (PreRanking & Ranking)
 
-Provides access to critical protocol parameters and network configurations, configurable via environment variables.
-
-```typescript
-import { PROTOCOL_CONSTANTS, NETWORKS, REDIS_CONFIG } from '@intenus/common';
-
-// Access protocol parameters
-console.log(`Minimum solver stake: ${PROTOCOL_CONSTANTS.MIN_SOLVER_STAKE}`);
-
-// Access network endpoints
-console.log(`Sui Testnet RPC: ${NETWORKS.TESTNET.sui}`);
-console.log(`Walrus Testnet Publisher: ${NETWORKS.TESTNET.walrus.publisher}`);
-
-// Access Redis configuration
-console.log(`Redis URL: ${REDIS_CONFIG.url}`);
-```
-
-### Environment Utilities
-
-A set of safe utility functions for accessing environment variables in both Node.js and browser contexts.
+Types for the intent classification and solution ranking engines.
 
 ```typescript
-import { getEnv, getRequiredEnv, getEnvNumber } from '@intenus/common';
+import type {
+  IntentClassification,
+  PreRankingResult,
+  RankingResult
+} from '@intenus/common';
 
-// Get an optional variable with a fallback
-const redisUrl = getEnv('REDIS_URL', 'redis://localhost:6379');
-
-// Get a required variable, which throws if not set
-const suiRpcUrl = getRequiredEnv('SUI_RPC_URL');
-
-// Get a variable as a number
-const batchSize = getEnvNumber('MAX_BATCH_SIZE', 100);
-```
-
-## Usage
-
-This package is intended to be used as a dependency in any project interacting with the Intenus Protocol.
-
-### Solver Application
-```typescript
-import type { Batch, SolutionSubmission, SolutionOutcome } from '@intenus/common';
-
-class MySolver {
-  processBatch(batch: Batch): SolutionSubmission {
-    // Implement solver logic with guaranteed type safety
-    const outcomes: SolutionOutcome[] = [];
-    // ...
-    return { /* ... solution submission object ... */ };
+// Intent classification (ML-based)
+const classification: IntentClassification = {
+  primary_category: 'swap',
+  sub_category: 'urgent_swap',
+  detected_priority: 'speed',
+  complexity_level: 'simple',
+  risk_level: 'low',
+  confidence: 0.92,
+  metadata: {
+    method: 'ml_model',
+    model_version: 'v1.0.0',
+    features_used: ['timing', 'constraints', 'preferences']
   }
-}
+};
+
+// PreRanking engine result
+const preRanking: PreRankingResult = {
+  intent_id: 'intent_001',
+  intent_classification: classification,
+  passed_solution_ids: ['sol_001', 'sol_002'],
+  failed_solution_ids: [],
+  feature_vectors: [/* extracted features */],
+  dry_run_results: [/* simulation results */],
+  stats: { total_submitted: 2, passed: 2, failed: 0 },
+  processed_at: Date.now()
+};
+
+// Ranking engine result
+const ranking: RankingResult = {
+  intent_id: 'intent_001',
+  ranked_solutions: [/* ranked solutions */],
+  best_solution: {
+    rank: 1,
+    score: 88.5,
+    solution_id: 'sol_001',
+    solver_address: '0x...',
+    score_breakdown: {
+      surplus_score: 85,
+      cost_score: 90,
+      speed_score: 95,
+      reputation_score: 85
+    },
+    reasoning: {
+      primary_reason: 'Fastest execution with optimal gas cost',
+      secondary_reasons: ['Single hop routing', 'High surplus'],
+      risk_assessment: 'low',
+      confidence_level: 0.95
+    },
+    personalization_applied: false,
+    warnings: [],
+    expires_at: Date.now() + 60000
+  },
+  metadata: {
+    total_solutions: 2,
+    average_score: 82.3,
+    strategy: 'speed_optimized',
+    strategy_version: 'v1.0',
+    intent_category: 'swap'
+  },
+  ranked_at: Date.now(),
+  expires_at: Date.now() + 60000
+};
 ```
 
-### Client Application
-```typescript
-import type { Intent } from '@intenus/common';
+**Available Core Types:**
+- `SolutionSubmission` - Solution reference
+- `IntentClassification` - ML-based intent classification
+- `PreRankingResult` - PreRanking engine output
+- `RankedSolution` - Ranked solution with scores
+- `RankingResult` - Final ranking result
 
-class MyClient {
-  createSwapIntent(/* ... */): Intent {
-    // Construct a type-safe intent object
-    return { /* ... intent object ... */ };
-  }
+### ML Dataset Types
+
+Types for training ML models for intent classification.
+
+```typescript
+import type {
+  IntentClassificationTrainingData,
+  RawFeatures,
+  GroundTruthLabel,
+  TrainingDatasetMetadata,
+  ModelMetadata
+} from '@intenus/common';
+
+// Training sample
+const trainingSample: IntentClassificationTrainingData = {
+  sample_id: 'sample_001',
+  intent_metadata: {
+    intent_id: 'intent_001',
+    intent_type: 'swap.exact_input',
+    created_at: Date.now()
+  },
+  raw_features: {
+    solver_window_ms: 5000,
+    max_slippage_bps: 50,
+    optimization_goal: 'maximize_output',
+    surplus_weight: 50,
+    gas_cost_weight: 25,
+    // ... more features
+  },
+  ground_truth: {
+    primary_category: 'swap',
+    sub_category: 'standard_swap',
+    detected_priority: 'output',
+    complexity_level: 'simple',
+    risk_level: 'low'
+  },
+  label_info: {
+    labeling_method: 'expert_manual',
+    labeled_by: 'expert_001',
+    labeled_at: Date.now(),
+    label_confidence: 0.95
+  },
+  execution_outcome: {
+    executed: true,
+    chosen_solution_rank: 1,
+    actual_metrics: { /* execution metrics */ },
+    user_satisfaction: 5
+  },
+  dataset_version: 'v1.0',
+  created_at: Date.now()
+};
+
+// Dataset metadata
+const datasetMeta: TrainingDatasetMetadata = {
+  dataset_id: 'dataset_v1',
+  version: 'v1.0',
+  composition: {
+    synthetic_samples: 5000,
+    production_samples: 15000,
+    expert_samples: 3000,
+    total_samples: 23000
+  },
+  class_distribution: {
+    swap: 15000,
+    limit_order: 6000,
+    complex_defi: 1500,
+    arbitrage: 400,
+    other: 100
+  },
+  // ... more metadata
+};
+```
+
+**Available Dataset Types:**
+- `RawFeatures` - Extracted features from intents
+- `GroundTruthLabel` - Classification labels
+- `LabelingMetadata` - Labeling information
+- `ExecutionOutcome` - Execution feedback
+- `IntentClassificationTrainingData` - Complete training sample
+- `ClassificationFeedback` - Continuous learning feedback
+- `TrainingDatasetMetadata` - Dataset composition
+- `ModelMetadata` - ML model metadata
+- `ClassificationInference` - Production inference result
+
+## JSON Schemas
+
+For Python, Rust, and other language implementations, JSON Schema definitions are provided:
+
+### IGS Schema
+
+```bash
+# Located at: src/schemas/igs-intent-schema.json
+# Validates IGSIntent structures
+```
+
+### Core Schema
+
+```bash
+# Located at: src/schemas/core-schema.json
+# Validates IntentClassification, PreRankingResult, RankingResult
+```
+
+### Dataset Schema
+
+```bash
+# Located at: src/schemas/dataset-schema.json
+# Validates ML training data structures
+```
+
+**Usage Example (Python):**
+
+```python
+import json
+import jsonschema
+
+# Load schema
+with open('node_modules/@intenus/common/src/schemas/dataset-schema.json') as f:
+    schema = json.load(f)
+
+# Validate training sample
+sample = {
+    "sample_id": "sample_001",
+    "intent_metadata": { ... },
+    "raw_features": { ... },
+    "ground_truth": { ... },
+    # ...
 }
+
+jsonschema.validate(instance=sample, schema=schema['definitions']['IntentClassificationTrainingData'])
+```
+
+## Validation
+
+TypeScript validation utilities for IGS intents:
+
+```typescript
+import {
+  validateIGS,
+  validateIGSIntent,
+  isValidIGSIntent,
+  parseIGSIntent
+} from '@intenus/common';
+
+// Basic validation
+const result = validateIGS(intent);
+console.log(result.valid); // true/false
+console.log(result.errors); // validation errors
+
+// With JSON Schema
+const isValid = validateIGSIntent(intent);
+
+// Parse and validate
+const parsed = parseIGSIntent(jsonString);
 ```
 
 ## Package Philosophy
 
-- **What it provides**:
-  - A complete set of TypeScript type definitions for the Intenus Protocol.
-  - Centralized protocol constants and network configurations.
-  - Type-safe utilities for environment variables and Walrus storage paths.
-  - Comprehensive JSDoc annotations for all types and constants.
+**Provides:**
+- Complete TypeScript type definitions
+- JSON Schema (Draft 07) for cross-language compatibility
+- Comprehensive inline documentation
+- Zero runtime dependencies
 
-- **What it does NOT provide**:
-  - Runtime implementations or business logic.
-  - Abstractions over other SDKs.
-  - Network communication or external service integrations.
+**Does NOT provide:**
+- Runtime implementations or business logic
+- Network communication or SDKs
+- Database or storage abstractions
 
-By adhering to this philosophy, `@intenus/common` remains a lightweight, portable, and essential foundation for the ecosystem.
+## Architecture Notes
+
+### Intent Classification Strategy
+
+**Primary:** ML-based classification (production)
+- Trained on historical intent patterns
+- Continuous learning from execution outcomes
+- Fallback to rule-based when confidence < 0.7
+
+**Fallback:** Rule-based classification
+- Pattern matching on constraints and preferences
+- Used during cold start and low-confidence cases
+
+### ID-Based Architecture
+
+All core types work with IDs (not full objects):
+- `PreRankingResult` contains `passed_solution_ids` (not full solutions)
+- `RankingResult` contains `solution_id` (not full solution data)
+- Engines fetch full data from contracts as needed
+
+This reduces data transfer and keeps results lightweight.
 
 ## Related Packages
 
-- [`@intenus/solver-sdk`](../solver-sdk): Optional utilities for solver development.
-- [`@intenus/client-sdk`](../client-sdk): Optional helpers for building client applications.
-- [`@intenus/walrus`](../walrus): A structured storage client for Walrus.
+- [`@intenus/solver-sdk`](../solver-sdk) - Solver development utilities
+- [`@intenus/client-sdk`](../client-sdk) - Client application helpers
+
+## License
+
+See repository root for license information.

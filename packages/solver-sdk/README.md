@@ -1,150 +1,110 @@
 # @intenus/solver-sdk
 
-Optional utilities for building solvers on the Intenus Protocol. This package provides high-level helpers for common solver tasks, such as subscribing to batches and constructing solutions.
+SDK for building solvers on Intenus Protocol - utilities for batch notifications, solution building, and IGS integration.
 
 ## Installation
 
 ```bash
-npm install @intenus/solver-sdk @mysten/sui @mysten/walrus @mysten/seal ioredis
+npm install @intenus/solver-sdk @mysten/sui @intenus/common
 ```
 
-## Purpose
+## Features
 
-This package is designed to accelerate solver development by offering convenient, optional abstractions. Developers retain the flexibility to bypass these helpers and implement their own logic using the underlying Sui, Walrus, and Seal SDKs directly.
+- **Batch Listener** - Redis subscriptions for batch notifications
+- **Solution Builder** - Helper for building PTB-based solutions
+- **IGS Builder** - Construct IGS solutions from intents
+- **P2P Matcher** - Match peer-to-peer swaps
+- **Type Safety** - Full TypeScript support with IGS types
 
-## Core Utilities
+## Usage
 
-### `SolverListener`
-
-A utility for managing Redis subscriptions to receive new batch notifications from the Intenus network. It can be integrated with `@intenus/walrus` to automatically fetch the full `BatchManifest` from Walrus.
-
-**Example: Subscribing to New Batches**
+### Listen for Batches
 
 ```typescript
 import { SolverListener } from '@intenus/solver-sdk';
-import { IntenusWalrusClient } from '@intenus/walrus';
 
-const walrusClient = new IntenusWalrusClient({ network: 'testnet' });
+const listener = new SolverListener('redis://localhost:6379');
 
-// Initialize listener with optional Walrus client for manifest fetching
-const listener = new SolverListener('redis://localhost:6379', walrusClient);
+listener.onNewBatch(async (batch) => {
+  console.log(`New batch: ${batch.batch_id}`);
+  console.log(`Intents: ${batch.intent_ids.length}`);
 
-listener.onNewBatch(async (batch, manifest) => {
-  // The manifest is automatically fetched from Walrus if the client is provided
-  if (!manifest) {
-    console.warn(`Could not fetch manifest for epoch ${batch.epoch}`);
-    return;
-  }
+  // Fetch intents and build solutions
+  const solution = await buildSolution(batch);
 
-  console.log(`Processing batch ${batch.batch_id} with ${manifest.intents.length} intents.`);
-  // ... implement your solving logic here ...
+  // Submit solution
+  await listener.submitSolution(solution, batch.batch_id);
 });
+
+// Send heartbeat
+await listener.sendHeartbeat(solverAddress);
 ```
 
-### `IGSSolutionBuilder`
+### Build Solutions
 
-A helper for programmatically constructing an `IGSSolution` and its associated Programmable Transaction Block (PTB) from an `Intent`.
+```typescript
+import { SolutionBuilder } from '@intenus/solver-sdk';
+import { SuiClient } from '@mysten/sui/client';
 
-**Example: Building a Solution**
+const client = new SuiClient({ url: 'https://testnet.sui.io' });
+const builder = new SolutionBuilder(intentId, solverAddress);
+
+// Add PTB operations
+builder.getPTB().moveCall({
+  target: '0x2::sui::split',
+  arguments: [/* ... */]
+});
+
+// Build submission
+const { submission, ptbBytes } = await builder.build({ client });
+
+// Submit to chain or backend
+```
+
+### Build IGS Solutions
 
 ```typescript
 import { IGSSolutionBuilder } from '@intenus/solver-sdk';
-import { SuiClient } from '@mysten/sui/client';
-import type { Intent } from '@intenus/common';
+import type { Intent as IGSIntent } from '@intenus/common';
 
-const suiClient = new SuiClient({ url: 'https://fullnode.testnet.sui.io' });
-const solverAddress = '0x...';
-const intent: Intent = { /* ... received from the network ... */ };
+const intent: IGSIntent = { /* ... */ };
 
-const builder = new IGSSolutionBuilder(intent, { solver_address: solverAddress });
-
-// Add promised outputs for the solution
-builder.addPromisedOutput({
-  asset_id: '0x...::usdc::USDC',
-  amount: '100500000', // 100.5 USDC, representing a surplus
+const builder = createIGSSolutionBuilder({
+  solverId: 'solver_123',
+  confidenceScore: 0.95
 });
 
-// Access the underlying Transaction object for custom PTB modifications
-const txb = builder.getPTB();
-txb.moveCall({
-  target: '0x...::dex::swap_exact_in',
-  arguments: [/* ... */],
-});
+const solution = builder
+  .setIntent(intent)
+  .addRoute({ dex: 'cetus', pool_id: '0x...' })
+  .setExpectedOutput({ amount: '1000000', slippage_bps: 50 })
+  .build();
 
-// Build the final, signed solution ready for submission
-const { solution } = await builder.build({ client: suiClient });
-
-await listener.submitSolution(solution);
+// Validate solution
+const isValid = validateIGSSolution(solution);
 ```
 
-### `WalrusBatchFetcher`
-
-An optional utility for fetching and decrypting batch data and intents from Walrus. This is used internally by `SolverListener` but can also be used standalone.
-
-**Example: Manually Fetching Intents**
+## Types
 
 ```typescript
-import { WalrusBatchFetcher } from '@intenus/solver-sdk';
-import { IntenusWalrusClient } from '@intenus/walrus';
-import { SealClient } from '@mysten/seal';
-
-const walrusClient = new IntenusWalrusClient({ network: 'testnet' });
-const sealClient = new SealClient({ network: 'testnet' }); // For decryption
-
-const fetcher = new WalrusBatchFetcher(walrusClient);
-
-// 1. Fetch the manifest for a given epoch
-const manifest = await fetcher.fetchBatchManifest(1234);
-
-// 2. Fetch and automatically decrypt all intents in the manifest
-const intents = await fetcher.fetchIntents(manifest, sealClient);
-
-console.log(`Fetched ${intents.length} intents.`);
+import type {
+  BatchNotification,
+  IGSSolutionBuilder,
+  P2PMatch,
+  Intent as IGSIntent,
+  IGSSolution,
+  SolutionSubmission
+} from '@intenus/solver-sdk';
 ```
 
-## Flexibility: Manual Implementation
+## Development
 
-For maximum control, you can bypass all helpers and interact with the underlying libraries directly.
-
-```typescript
-import Redis from 'ioredis';
-import { SuiClient } from '@mysten/sui/client';
-import { Transaction } from '@mysten/sui/transactions';
-import type { Batch, IGSSolution, Intent } from '@intenus/common';
-
-const redis = new Redis('redis://localhost:6379');
-const suiClient = new SuiClient({ url: 'https://fullnode.testnet.sui.io' });
-
-redis.subscribe('intenus:batches:new');
-
-redis.on('message', async (channel, message) => {
-  const batch: Batch = JSON.parse(message);
-  
-  // 1. Manually fetch and decrypt intents from Walrus
-  // ...
-  
-  // 2. Custom solving logic
-  const txb = new Transaction();
-  // ... manually build your PTB ...
-  
-  // 3. Manually construct the solution submission
-  const solution: IGSSolution = {
-    solution_id: crypto.randomUUID(),
-    intent_id: 'intent_abc',
-    solver_address: '0x...',
-    promised_outputs: [ /* ... */ ],
-    ptb_bytes: Buffer.from(await txb.build({ client: suiClient })).toString('hex'),
-    // ... other IGS solution properties
-  };
-  
-  // 4. Submit through your own Redis channel or API
-  await redis.publish('intenus:solutions', JSON.stringify(solution));
-});
+```bash
+npm run build
+npm test
+npm run lint
 ```
 
-## Related Packages
+## License
 
-- [`@intenus/common`](../common): Provides the core type definitions like `Batch`, `Intent` (IGS), and `IGSSolution`.
-- [`@intenus/walrus`](../walrus): The underlying client for interacting with Walrus storage.
-- **Sui SDK**: The official SDK for all core Sui blockchain interactions.
-- **ioredis**: The Redis client used for pub/sub messaging.
+MIT

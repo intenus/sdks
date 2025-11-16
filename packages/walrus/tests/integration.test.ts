@@ -1,20 +1,19 @@
-/**
- * Integration tests for real Walrus testnet
- * Requires environment variables:
- * - INTENUS_ADMIN_PRIVATE_KEY
- * - INTENUS_ADMIN_PUBLIC_KEY
- */
-
 import { describe, it, expect, beforeAll } from 'vitest';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { IntenusWalrusClient } from '../src/client.js';
-import type { WalrusBatchManifest as BatchManifest } from '@intenus/common';
+import type {
+  IGSIntent,
+  IGSSolution,
+  ModelMetadata,
+  IntentClassificationTrainingData,
+  ClassificationFeedback,
+} from '../src/types/index.js';
 
 describe('Walrus Integration Tests (Testnet)', () => {
   let client: IntenusWalrusClient;
   let signer: Ed25519Keypair;
-  
+
   beforeAll(() => {
     if (!process.env.INTENUS_ADMIN_PRIVATE_KEY) {
       return;
@@ -22,342 +21,536 @@ describe('Walrus Integration Tests (Testnet)', () => {
 
     client = new IntenusWalrusClient({
       network: 'testnet',
-
     });
 
-    const { secretKey } = decodeSuiPrivateKey(process.env.INTENUS_ADMIN_PRIVATE_KEY);
+    const { secretKey } = decodeSuiPrivateKey(
+      process.env.INTENUS_ADMIN_PRIVATE_KEY,
+    );
     signer = Ed25519Keypair.fromSecretKey(secretKey);
-
   });
 
-  it('should store and retrieve a simple blob', async () => {
-    if (!process.env.INTENUS_ADMIN_PRIVATE_KEY) {
-      return;
-    }
-
-    const testData = Buffer.from('Hello Walrus from Intenus SDK!');
-    const testPath = '/test/simple-blob.txt';
-
-    const storeResult = await client.storeRaw(
-      testPath,
-      testData,
-      1, // 1 epoch
-      signer
-    );
-
-    expect(storeResult.blob_id).toBeDefined();
-    expect(storeResult.size_bytes).toBe(testData.length);
-
-    await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds
-
-    let retrievedData: Buffer | null = null;
-    const maxRetries = 3;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        retrievedData = await client.fetchRaw(storeResult.blob_id);
-        break;
-      } catch (error: any) {
-        if (attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 3000));
-        }
+  it(
+    'should store and retrieve a simple blob',
+    async () => {
+      if (!process.env.INTENUS_ADMIN_PRIVATE_KEY) {
+        return;
       }
-    }
 
-    expect(retrievedData).toBeDefined();
-    expect(retrievedData!.toString()).toBe(testData.toString());
+      const testData = Buffer.from('Hello Walrus from Intenus SDK!');
 
-    const exists = await client.exists(storeResult.blob_id);
-    expect(exists).toBe(true);
-  }, 90000); // Increase timeout to 90 seconds
+      const storeResult = await client.storeRaw(
+        testData,
+        1, // 1 epoch
+        signer,
+      );
 
-  it('should store and retrieve batch manifest', async () => {
-    if (!process.env.INTENUS_ADMIN_PRIVATE_KEY) {
-      return;
-    }
+      expect(storeResult.blob_id).toBeDefined();
+      expect(storeResult.size_bytes).toBe(testData.length);
 
-    const testManifest: BatchManifest = {
-      batch_id: `test_batch_${Date.now()}`,
-      epoch: Math.floor(Date.now() / 1000),
-      intent_count: 2,
-      intents: [
+      const fetchedData = await client.fetchRaw(storeResult.blob_id);
+      expect(fetchedData.toString()).toBe(testData.toString());
+
+      const exists = await client.exists(storeResult.blob_id);
+      expect(exists).toBe(true);
+    },
+    90_000,
+  );
+
+  it(
+    'should store and retrieve an intent (IGS-compliant)',
+    async () => {
+      if (!process.env.INTENUS_ADMIN_PRIVATE_KEY) {
+        return;
+      }
+
+      const now = Date.now();
+      const userAddress = signer.getPublicKey().toSuiAddress();
+
+      const intent: IGSIntent = {
+        // Các field quản lý nội bộ (nếu type IGSIntent có thêm) – không trái với schema gốc
+        id: `intent_${now}` as any,
+        created_at: now as any,
+        updated_at: now as any,
+        status: 'pending' as any,
+        tx_digest: null as any,
+
+        // IGS core fields theo igs-intent-schema.json
+        igs_version: '1.0.0',
+        user_address: userAddress,
+        intent_type: 'swap.exact_input',
+        description: 'Swap SUI to USDC with basic constraints',
+
+        object: {
+          user_address: userAddress,
+          created_ts: now,
+          policy: {
+            solver_access_window: {
+              start_ms: now,
+              end_ms: now + 5 * 60 * 1000,
+            },
+            auto_revoke_time: now + 60 * 60 * 1000,
+            access_condition: {
+              requires_solver_registration: true,
+              min_solver_stake: '1000000000',
+              requires_tee_attestation: false,
+              expected_measurement: '',
+              purpose: 'igs.intent.execution',
+            },
+          },
+        },
+
+        operation: {
+          mode: 'exact_input',
+          inputs: [
+            {
+              asset_id: 'native',
+              asset_info: {
+                symbol: 'SUI',
+                decimals: 9,
+                name: 'Sui',
+              },
+              amount: {
+                type: 'exact',
+                value: '1000000000', // 1 SUI (ví dụ)
+              },
+            },
+          ],
+          outputs: [
+            {
+              asset_id: 'native',
+              asset_info: {
+                symbol: 'USDC',
+                decimals: 6,
+                name: 'USD Coin',
+              },
+              amount: {
+                type: 'range',
+                min: '900000', // min 0.9 USDC
+                max: '2000000',
+              },
+            },
+          ],
+          expected_outcome: {
+            expected_outputs: [
+              {
+                asset_id: 'native',
+                amount: '1000000',
+              },
+            ],
+            expected_costs: {
+              gas_estimate: '0.1',
+              protocol_fees: '0.01',
+              slippage_estimate: '0.5',
+            },
+            benchmark: {
+              source: 'dex_aggregator',
+              timestamp: now,
+              confidence: 0.9,
+            },
+            market_price: {
+              price: '1.0',
+              price_asset: 'USDC',
+            },
+          },
+        },
+
+        constraints: {
+          max_slippage_bps: 100, // 1%
+          deadline_ms: now + 10 * 60 * 1000,
+          max_inputs: [
+            {
+              asset_id: 'native',
+              amount: '2000000000',
+            },
+          ],
+          min_outputs: [
+            {
+              asset_id: 'native',
+              amount: '900000',
+            },
+          ],
+          max_gas_cost: {
+            asset_id: 'native',
+            amount: '50000000',
+          },
+          routing: {
+            max_hops: 3,
+            blacklist_protocols: [],
+            whitelist_protocols: [],
+          },
+          limit_price: {
+            price: '1.1',
+            comparison: 'lte',
+            price_asset: 'USDC',
+          },
+        },
+
+        preferences: {
+          optimization_goal: 'balanced',
+          ranking_weights: {
+            surplus_weight: 60,
+            gas_cost_weight: 20,
+            execution_speed_weight: 10,
+            reputation_weight: 10,
+          },
+          execution: {
+            mode: 'best_solution',
+            show_top_n: 3,
+          },
+          privacy: {
+            encrypt_intent: false,
+            anonymous_execution: false,
+          },
+        },
+
+        metadata: {
+          original_input: {
+            text: 'Swap 1 SUI to USDC with low slippage.',
+            language: 'en',
+            confidence: 0.95,
+          },
+          client: {
+            name: 'intenus-sdk-tests',
+            version: '1.0.0',
+            platform: 'node',
+          },
+          warnings: [],
+          clarifications: [],
+          tags: ['test', 'integration', 'igs'],
+        },
+      } as any;
+
+      const result = await client.intents.store(intent, 1, signer);
+      expect(result.blob_id).toBeDefined();
+
+      const fetched = await client.intents.fetch(result.blob_id);
+      expect(fetched.user_address).toBe(intent.user_address);
+      expect(fetched.intent_type).toBe(intent.intent_type);
+      expect(fetched.operation.mode).toBe('exact_input');
+    },
+    120_000,
+  );
+
+  it(
+    'should store and retrieve a solution',
+    async () => {
+      if (!process.env.INTENUS_ADMIN_PRIVATE_KEY) {
+        return;
+      }
+
+      const solution: IGSSolution = {
+        solution_id: `solution_${Date.now()}`,
+        intent_id: `intent_${Date.now()}`,
+        solver_address: signer.getPublicKey().toSuiAddress(),
+        submitted_at: Date.now(),
+        ptb_bytes: '0xdeadbeef',
+        ptb_hash: '0xhash',
+        promised_outputs: [
+          {
+            asset_id: 'native',
+            amount: '1000000',
+          },
+        ],
+        estimated_gas: '0.1',
+        estimated_slippage_bps: 50,
+        surplus_calculation: {
+          benchmark_value_usd: '1',
+          solution_value_usd: '1.1',
+          surplus_usd: '0.1',
+          surplus_percentage: '10',
+        },
+        strategy_summary: {
+          protocols_used: ['dex1', 'dex2'],
+          total_hops: 2,
+          execution_path: 'dex1 -> dex2',
+        },
+        compliance_score: 100,
+      };
+
+      const result = await client.solutions.store(solution, 1, signer);
+      expect(result.blob_id).toBeDefined();
+
+      const fetched = await client.solutions.fetch(result.blob_id);
+      expect(fetched.solution_id).toBe(solution.solution_id);
+      expect(fetched.intent_id).toBe(solution.intent_id);
+    },
+    120_000,
+  );
+
+  it(
+    'should store and retrieve a dataset version (metadata + weights + training samples + feedback)',
+    async () => {
+      if (!process.env.INTENUS_ADMIN_PRIVATE_KEY) {
+        return;
+      }
+
+      const version = `v1.0.${Date.now()}`;
+
+      const metadata: ModelMetadata = {
+        model_id: 'intent_classifier',
+        model_version: version,
+        architecture: {
+          type: 'neural_network',
+          hyperparameters: {
+            hidden_sizes: [128, 64],
+          },
+        },
+        training: {
+          dataset_version: 'v1.0.0',
+          training_samples: 1000,
+          validation_samples: 200,
+          test_samples: 200,
+          trained_at: Date.now(),
+          training_duration_ms: 1000,
+        },
+        metrics: {
+          accuracy: 0.9,
+          precision: 0.9,
+          recall: 0.9,
+          f1_score: 0.88,
+          per_class_metrics: {},
+        },
+        feature_importance: [],
+        artifacts: {
+          model_weights_ref: 'weights_ref',
+          scaler_ref: 'scaler_ref',
+          encoder_ref: 'encoder_ref',
+        },
+        status: 'deployed',
+      };
+
+      const weights = Buffer.from('fake-model-weights');
+
+      const samples: IntentClassificationTrainingData[] = [
         {
+          sample_id: 'sample_1',
+          intent_metadata: {
+            intent_id: 'intent_1',
+            intent_type: 'swap.exact_input',
+            created_at: Date.now(),
+          },
+          raw_features: {
+            solver_window_ms: 5_000,
+            user_decision_timeout_ms: 60_000,
+            time_to_deadline_ms: 65_000,
+            time_in_force: 'good_til_cancel',
+            max_slippage_bps: 100,
+            max_gas_cost_usd: 1,
+            max_hops: 3,
+            has_whitelist: false,
+            has_blacklist: false,
+            has_limit_price: false,
+            optimization_goal: 'balanced',
+            surplus_weight: 60,
+            gas_cost_weight: 20,
+            execution_speed_weight: 10,
+            reputation_weight: 10,
+            auto_execute: false,
+            require_simulation: true,
+            input_count: 1,
+            output_count: 1,
+            input_asset_types: ['native'],
+            output_asset_types: ['stable'],
+            input_value_usd: 100,
+            expected_output_value_usd: 100,
+            benchmark_source: 'dex_aggregator',
+            benchmark_confidence: 0.9,
+            expected_gas_usd: 0.1,
+            expected_slippage_bps: 50,
+            has_nlp_input: true,
+            nlp_confidence: 0.95,
+            client_platform: 'node',
+            tag_count: 1,
+          },
+          ground_truth: {
+            primary_category: 'swap',
+            sub_category: 'exact_input',
+            detected_priority: 'balanced',
+            complexity_level: 'simple',
+            risk_level: 'low',
+          },
+          label_info: {
+            labeling_method: 'synthetic',
+            labeled_by: 'test-suite',
+            labeled_at: Date.now(),
+            label_confidence: 0.9,
+          },
+          execution_outcome: {
+            executed: true,
+            chosen_solution_rank: 1,
+            chosen_solution_id: 'solution_1',
+            actual_metrics: {
+              actual_output_usd: 100,
+              actual_gas_cost_usd: 0.1,
+              actual_execution_time_ms: 1000,
+              actual_slippage_bps: 50,
+            },
+            user_satisfaction: 5,
+            executed_at: Date.now(),
+          },
+          dataset_version: version,
+          created_at: Date.now(),
+          full_intent_ref: 'blob_1',
+        },
+        {
+          sample_id: 'sample_2',
+          intent_metadata: {
+            intent_id: 'intent_2',
+            intent_type: 'swap.exact_input',
+            created_at: Date.now(),
+          },
+          raw_features: {
+            solver_window_ms: 5_000,
+            user_decision_timeout_ms: 60_000,
+            time_to_deadline_ms: 65_000,
+            time_in_force: 'good_til_cancel',
+            max_slippage_bps: 100,
+            max_gas_cost_usd: 1,
+            max_hops: 3,
+            has_whitelist: false,
+            has_blacklist: false,
+            has_limit_price: false,
+            optimization_goal: 'balanced',
+            surplus_weight: 60,
+            gas_cost_weight: 20,
+            execution_speed_weight: 10,
+            reputation_weight: 10,
+            auto_execute: false,
+            require_simulation: true,
+            input_count: 1,
+            output_count: 1,
+            input_asset_types: ['native'],
+            output_asset_types: ['stable'],
+            input_value_usd: 100,
+            expected_output_value_usd: 100,
+            benchmark_source: 'dex_aggregator',
+            benchmark_confidence: 0.9,
+            expected_gas_usd: 0.1,
+            expected_slippage_bps: 50,
+            has_nlp_input: true,
+            nlp_confidence: 0.95,
+            client_platform: 'node',
+            tag_count: 1,
+          },
+          ground_truth: {
+            primary_category: 'limit_order',
+            sub_category: 'sell',
+            detected_priority: 'output',
+            complexity_level: 'simple',
+            risk_level: 'low',
+          },
+          label_info: {
+            labeling_method: 'synthetic',
+            labeled_by: 'test-suite',
+            labeled_at: Date.now(),
+            label_confidence: 0.9,
+          },
+          execution_outcome: {
+            executed: true,
+            chosen_solution_rank: 1,
+            chosen_solution_id: 'solution_2',
+            actual_metrics: {
+              actual_output_usd: 80,
+              actual_gas_cost_usd: 0.1,
+              actual_execution_time_ms: 1000,
+              actual_slippage_bps: 100,
+            },
+            user_satisfaction: 4,
+            executed_at: Date.now(),
+          },
+          dataset_version: version,
+          created_at: Date.now(),
+          full_intent_ref: 'blob_2',
+        },
+      ];
+
+      const feedback: ClassificationFeedback[] = [
+        {
+          feedback_id: 'fb_1',
           intent_id: 'intent_1',
-          user_address: signer.getPublicKey().toSuiAddress(),
-          intent_data: JSON.stringify({ action: 'swap', amount: '1000' }),
-          is_encrypted: false,
-          seal_policy_id: null,
-          category: 'swap',
-          timestamp: Date.now(),
+          predicted_classification: {
+            primary_category: 'swap',
+            sub_category: 'exact_input',
+            detected_priority: 'balanced',
+            complexity_level: 'simple',
+            risk_level: 'low',
+            confidence: 0.9,
+            model_version: version,
+          },
+          actual_outcome: {
+            executed: true,
+            chosen_solution_rank: 1,
+            chosen_solution_id: 'solution_1',
+            actual_metrics: {
+              actual_output_usd: 100,
+              actual_gas_cost_usd: 0.1,
+              actual_execution_time_ms: 1000,
+              actual_slippage_bps: 50,
+            },
+            user_satisfaction: 5,
+            executed_at: Date.now(),
+          },
+          best_strategy: 'balanced',
+          corrected_classification: {
+            primary_category: 'swap',
+            sub_category: 'exact_input',
+            detected_priority: 'balanced',
+            complexity_level: 'simple',
+            risk_level: 'low',
+          },
+          feedback_source: 'execution_outcome',
+          created_at: Date.now(),
         },
-        {
-          intent_id: 'intent_2',
-          user_address: signer.getPublicKey().toSuiAddress(),
-          intent_data: JSON.stringify({ action: 'lend', amount: '500' }),
-          is_encrypted: false,
-          seal_policy_id: null,
-          category: 'lending',
-          timestamp: Date.now(),
-        },
-      ],
-      categories: { swap: 1, lending: 1 },
-      estimated_value_usd: 1500,
-      solver_deadline: Date.now() + 300000, // 5 minutes
-      created_at: Date.now(),
-      requirements: {
-        min_tee_verification: false,
-        min_stake_required: '1000000000', // 1 SUI
-        max_solutions_per_solver: 3,
-      },
-    };
+      ];
 
-    const storeResult = await client.batches.storeManifest(testManifest, signer);
-    expect(storeResult.blob_id).toBeDefined();
+      const builder = client.datasets.createVersion(version)
+        .withMetadata(metadata)
+        .withWeights(weights)
+        .withTrainingSamples(samples)
+        .withFeedback(feedback);
 
-    await new Promise(resolve => setTimeout(resolve, 5000));
+      const result = await client.datasets.storeVersion(builder, 1, signer);
 
-    let retrievedManifest: BatchManifest | null = null;
-    const maxRetries = 3;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        retrievedManifest = await client.batches.fetchManifestById(storeResult.blob_id);
-        break;
-      } catch (error: any) {
-        if (attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 3000));
-        }
-      }
-    }
+      expect(result.blob_id).toBeDefined();
+      expect(result.quilt_id).toBeDefined();
+      expect(result.files.length).toBeGreaterThanOrEqual(4);
 
-    expect(retrievedManifest).toBeDefined();
-    expect(retrievedManifest!.batch_id).toBe(testManifest.batch_id);
-    expect(retrievedManifest!.intents).toHaveLength(2);
-    expect(retrievedManifest!.intent_count).toBe(2);
-  }, 120000);
+      // Cho Walrus có thời gian propagate
+      await new Promise((resolve) => setTimeout(resolve, 10_000));
 
-  it('should store and retrieve intents efficiently', async () => {
-    if (!process.env.INTENUS_ADMIN_PRIVATE_KEY) {
-      return;
-    }
+      const retrievedMetadata = await client.datasets.fetchMetadata(
+        result.quilt_id,
+      );
+      expect(retrievedMetadata.model_id).toBe(metadata.model_id);
+      expect(retrievedMetadata.model_version).toBe(version);
 
-    const testIntents = [
-      {
-        intent_id: 'intent_1',
-        data: { action: 'swap', from: 'SUI', to: 'USDC', amount: '1000' },
-        category: 'swap',
-      },
-      {
-        intent_id: 'intent_2',
-        data: { action: 'lend', protocol: 'Scallop', amount: '500' },
-        category: 'lending',
-      },
-      {
-        intent_id: 'intent_3',
-        data: { action: 'stake', validator: 'validator_1', amount: '2000' },
-        category: 'staking',
-      },
-    ];
+      const retrievedWeights = await client.datasets.fetchWeights(
+        result.quilt_id,
+      );
+      expect(retrievedWeights.toString()).toBe(weights.toString());
 
-    const batchId = `batch_${Date.now()}`;
+      const retrievedSamples = await client.datasets.fetchTrainingSamples(
+        result.quilt_id,
+      );
+      expect(retrievedSamples.length).toBe(samples.length);
 
-    const result = await client.batches.storeIntents(
-      testIntents,
-      batchId,
-      signer,
-      1 // 1 epoch
-    );
+      const retrievedFeedback = await client.datasets.fetchFeedback(
+        result.quilt_id,
+      );
+      expect(retrievedFeedback.length).toBe(feedback.length);
 
-    expect(result.blobId).toBeDefined();
-    expect(result.intentIds).toHaveLength(testIntents.length);
-
-    await new Promise(resolve => setTimeout(resolve, 5000));
-
-    let allIntents: any[] = [];
-    
-      try {
-        allIntents = await client.batches.fetchIntents(result.blobId);
-      } catch (error: any) {
-        console.error(error);
-      }
-    
-    expect(allIntents).toHaveLength(testIntents.length);
-
-    const retrievedIntent1 = allIntents.find(intent => intent.intent_id === 'intent_1');
-    expect(retrievedIntent1).toBeDefined();
-    expect(retrievedIntent1!.data.action).toBe('swap');
-    expect(retrievedIntent1!.category).toBe('swap');
-
-    let individualIntent: any = null;
-    
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        individualIntent = await client.batches.fetchIntent(result.blobId, 'intent_1');
-        break;
-      } catch (error: any) {
-        if (attempt < 3) {
-          await new Promise(resolve => setTimeout(resolve, 3000));
-        }
-      }
-      }
-    
-    expect(individualIntent).toBeDefined();
-    expect(individualIntent!.data.action).toBe('swap');
-  }, 150000);
-
-  it.only('should store and retrieve training dataset', async () => {
-    if (!process.env.INTENUS_ADMIN_PRIVATE_KEY) {
-      return;
-    }
-
-    const version = `v1.0.${Date.now()}`;
-    const features = Buffer.from('feature1,feature2,feature3\n1.0,2.0,3.0\n4.0,5.0,6.0');
-    const labels = Buffer.from('label\n1\n0');
-
-    const metadata = {
-      batch_count: 10,
-      intent_count: 100,
-      execution_count: 95,
-      feature_columns: ['feature1', 'feature2', 'feature3'],
-      label_columns: ['label'],
-      data_quality_score: 0.95,
-      completeness: 0.98
-    };
-
-    const result = await client.training.storeDataset(
-      version,
-      features,
-      labels,
-      metadata,
-      signer
-    );
-
-    expect(result.metadataResult.blob_id).toBeDefined();
-    expect(result.featuresResult.blob_id).toBeDefined();
-    expect(result.labelsResult.blob_id).toBeDefined();
-
-    await new Promise(resolve => setTimeout(resolve, 10000));
-
-    const retrievedMetadata = await client.training.fetchDatasetMetadata(result.metadataResult.blob_id);
-    expect(retrievedMetadata.version).toBe(version);
-    expect(retrievedMetadata.batch_count).toBe(10);
-    expect(retrievedMetadata.features_blob_id).toBe(result.featuresResult.blob_id);
-
-    const retrievedFeatures = await client.training.fetchDatasetFeatures(result.featuresResult.blob_id, version);
-    expect(retrievedFeatures.toString()).toBe(features.toString());
-  }, 120000);
-
-  it('should store and retrieve ML model', async () => {
-    if (!process.env.INTENUS_ADMIN_PRIVATE_KEY) {
-      return;
-    }
-
-    const modelName = 'user_preference_ranker';
-    const version = `v1.0.${Date.now()}`;
-    const modelData = Buffer.from('fake-onnx-model-data');
-
-    const metadata = {
-      model_type: 'user_preference',
-      framework: 'pytorch',
-      training_dataset_version: 'v1.0.0',
-      training_duration_ms: 3600000,
-      metrics: {
-        accuracy: 0.92,
-        precision: 0.89,
-        recall: 0.94,
-        f1_score: 0.91
-      },
-      config: {
-        input_shape: [128],
-        output_shape: [1],
-        hyperparameters: {
-          learning_rate: 0.001,
-          batch_size: 32
-        }
-      }
-    };
-
-    const result = await client.training.storeModel(
-      modelName,
-      version,
-      modelData,
-      metadata,
-      signer
-    );
-
-    expect(result.metadataResult.blob_id).toBeDefined();
-    expect(result.modelResult.blob_id).toBeDefined();
-
-    await new Promise(resolve => setTimeout(resolve, 10000));
-
-    const retrievedMetadata = await client.training.fetchModelMetadata(result.metadataResult.blob_id);
-    expect(retrievedMetadata.name).toBe(modelName);
-    expect(retrievedMetadata.version).toBe(version);
-    expect(retrievedMetadata.metrics.accuracy).toBe(0.92);
-    expect(retrievedMetadata.model_blob_id).toBe(result.modelResult.blob_id);
-
-    const retrievedModel = await client.training.fetchModel(result.modelResult.blob_id, modelName, version);
-    expect(retrievedModel.toString()).toBe(modelData.toString());
-  }, 120000);
-
-  it('should store and retrieve training data points', async () => {
-    if (!process.env.INTENUS_ADMIN_PRIVATE_KEY) {
-      return;
-    }
-
-    const dataPoints = [
-      {
-        id: 'point_1',
-        features: { surplus: 100, gas: 50, slippage: 0.5 },
-        labels: { rating: 5, selected: true }
-      },
-      {
-        id: 'point_2',
-        features: { surplus: 80, gas: 60, slippage: 1.0 },
-        labels: { rating: 4, selected: true }
-      },
-      {
-        id: 'point_3',
-        features: { surplus: 50, gas: 70, slippage: 2.0 },
-        labels: { rating: 3, selected: false }
-      }
-    ];
-
-    const datasetVersion = `v1.0.${Date.now()}`;
-
-    const result = await client.training.storeTrainingData(
-      dataPoints,
-      datasetVersion,
-      signer,
-      1
-    );
-
-    expect(result.blobId).toBeDefined();
-    expect(result.dataPointIds).toHaveLength(3);
-
-    await new Promise(resolve => setTimeout(resolve, 20000));
-
-    let retrievedPoints: any[] = [];
-    const maxRetries = 5;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        retrievedPoints = await client.training.fetchTrainingData(result.blobId);
-        break;
-      } catch (error: any) {
-        if (attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 5000));
-        }
-      }
-    }
-
-    expect(retrievedPoints).toHaveLength(3);
-
-    const point1 = retrievedPoints.find(p => p.id === 'point_1');
-    expect(point1).toBeDefined();
-    expect(point1!.features.surplus).toBe(100);
-    expect(point1!.labels.rating).toBe(5);
-  }, 150000);
+      const files = await client.datasets.listFiles(result.quilt_id);
+      expect(files).toEqual(
+        expect.arrayContaining([
+          'metadata.json',
+          'weights.pkl',
+          'training_samples.jsonl',
+          'feedback.jsonl',
+        ]),
+      );
+    },
+    150_000,
+  );
 
   it('should handle client reset', () => {
     if (!process.env.INTENUS_ADMIN_PRIVATE_KEY) {

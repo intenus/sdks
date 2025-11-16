@@ -1,0 +1,279 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://intenus.io/schemas/core.json",
+  "title": "Intenus Core Types Schema",
+  "description": "JSON Schema for Core types (PreRanking and Ranking Engine)",
+  "definitions": {
+    "SolutionSubmission": {
+      "type": "object",
+      "description": "Solution submitted by solver (on-chain reference)",
+      "required": ["solution_id", "intent_id", "solver_address", "submitted_at"],
+      "properties": {
+        "solution_id": {
+          "type": "string",
+          "description": "Unique solution ID (from on-chain object)"
+        },
+        "intent_id": {
+          "type": "string",
+          "description": "Intent ID this solution is for"
+        },
+        "solver_address": {
+          "type": "string",
+          "description": "Solver's blockchain address"
+        },
+        "submitted_at": {
+          "type": "number",
+          "description": "Submission timestamp (Unix ms)"
+        },
+        "transaction_bytes_ref": {
+          "type": "string",
+          "description": "PTB transaction bytes reference"
+        }
+      }
+    },
+    "IntentClassification": {
+      "type": "object",
+      "description": "Intent classification result from ML or rule-based classifier",
+      "required": ["primary_category", "detected_priority", "complexity_level", "risk_level", "confidence", "metadata"],
+      "properties": {
+        "primary_category": {
+          "type": "string",
+          "enum": ["swap", "limit_order", "complex_defi", "arbitrage", "other"],
+          "description": "Primary intent category detected"
+        },
+        "sub_category": {
+          "type": "string",
+          "description": "Sub-category for fine-grained classification"
+        },
+        "detected_priority": {
+          "type": "string",
+          "enum": ["speed", "cost", "output", "balanced"],
+          "description": "User priority detected from constraints"
+        },
+        "complexity_level": {
+          "type": "string",
+          "enum": ["simple", "moderate", "complex"],
+          "description": "Intent complexity level"
+        },
+        "risk_level": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "Risk level assessment"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence in classification (0-1)"
+        },
+        "metadata": {
+          "type": "object",
+          "required": ["method"],
+          "properties": {
+            "method": {
+              "type": "string",
+              "enum": ["rule_based", "ml_model", "hybrid"],
+              "description": "Classification method used"
+            },
+            "model_version": {
+              "type": "string",
+              "description": "Model version (if ML used)"
+            },
+            "features_used": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Features used in classification"
+            }
+          }
+        }
+      }
+    },
+    "PreRankingResult": {
+      "type": "object",
+      "description": "PreRanking engine result - validation, classification, and feature extraction",
+      "required": ["intent_id", "intent_classification", "passed_solution_ids", "failed_solution_ids", "feature_vectors", "dry_run_results", "stats", "processed_at"],
+      "properties": {
+        "intent_id": {
+          "type": "string",
+          "description": "Intent ID being processed"
+        },
+        "intent_classification": {
+          "$ref": "#/definitions/IntentClassification"
+        },
+        "passed_solution_ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Solution IDs that passed validation"
+        },
+        "failed_solution_ids": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["solution_id", "failure_reason", "errors"],
+            "properties": {
+              "solution_id": { "type": "string" },
+              "failure_reason": { "type": "string" },
+              "errors": { "type": "array", "items": { "type": "object" } }
+            }
+          }
+        },
+        "feature_vectors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["solution_id", "features"],
+            "properties": {
+              "solution_id": { "type": "string" },
+              "features": {
+                "type": "object",
+                "required": ["surplus_usd", "surplus_percentage", "gas_cost", "protocol_fees", "total_cost", "total_hops", "protocols_count"],
+                "properties": {
+                  "surplus_usd": { "type": "number" },
+                  "surplus_percentage": { "type": "number" },
+                  "gas_cost": { "type": "number" },
+                  "protocol_fees": { "type": "number" },
+                  "total_cost": { "type": "number" },
+                  "total_hops": { "type": "number" },
+                  "protocols_count": { "type": "number" },
+                  "estimated_execution_time": { "type": "number" },
+                  "solver_reputation_score": { "type": "number" },
+                  "solver_success_rate": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "dry_run_results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["solution_id", "result"],
+            "properties": {
+              "solution_id": { "type": "string" },
+              "result": { "description": "Raw simulation result from Sui" }
+            }
+          }
+        },
+        "stats": {
+          "type": "object",
+          "required": ["total_submitted", "passed", "failed", "dry_run_executed", "dry_run_successful"],
+          "properties": {
+            "total_submitted": { "type": "number" },
+            "passed": { "type": "number" },
+            "failed": { "type": "number" },
+            "dry_run_executed": { "type": "number" },
+            "dry_run_successful": { "type": "number" }
+          }
+        },
+        "processed_at": {
+          "type": "number",
+          "description": "Processing timestamp (Unix ms)"
+        }
+      }
+    },
+    "RankedSolution": {
+      "type": "object",
+      "description": "Ranked solution with scoring and explanation",
+      "required": ["rank", "score", "solution_id", "solver_address", "score_breakdown", "reasoning", "personalization_applied", "warnings", "expires_at"],
+      "properties": {
+        "rank": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Ranking position (1 = best)"
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Overall score (0-100)"
+        },
+        "solution_id": {
+          "type": "string",
+          "description": "Solution ID reference"
+        },
+        "solver_address": {
+          "type": "string",
+          "description": "Solver address"
+        },
+        "score_breakdown": {
+          "type": "object",
+          "required": ["surplus_score", "cost_score", "speed_score", "reputation_score"],
+          "properties": {
+            "surplus_score": { "type": "number" },
+            "cost_score": { "type": "number" },
+            "speed_score": { "type": "number" },
+            "reputation_score": { "type": "number" }
+          }
+        },
+        "reasoning": {
+          "type": "object",
+          "required": ["primary_reason", "secondary_reasons", "risk_assessment", "confidence_level"],
+          "properties": {
+            "primary_reason": { "type": "string" },
+            "secondary_reasons": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "risk_assessment": {
+              "type": "string",
+              "enum": ["low", "medium", "high"]
+            },
+            "confidence_level": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "personalization_applied": {
+          "type": "boolean"
+        },
+        "user_fit_score": {
+          "type": "number"
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "expires_at": {
+          "type": "number",
+          "description": "Expiration timestamp (Unix ms)"
+        }
+      }
+    },
+    "RankingResult": {
+      "type": "object",
+      "description": "Ranking engine final result",
+      "required": ["intent_id", "ranked_solutions", "best_solution", "metadata", "ranked_at", "expires_at"],
+      "properties": {
+        "intent_id": {
+          "type": "string"
+        },
+        "ranked_solutions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/RankedSolution" }
+        },
+        "best_solution": {
+          "$ref": "#/definitions/RankedSolution"
+        },
+        "metadata": {
+          "type": "object",
+          "required": ["total_solutions", "average_score", "strategy", "strategy_version", "intent_category"],
+          "properties": {
+            "total_solutions": { "type": "number" },
+            "average_score": { "type": "number" },
+            "strategy": { "type": "string" },
+            "strategy_version": { "type": "string" },
+            "intent_category": { "type": "string" }
+          }
+        },
+        "ranked_at": {
+          "type": "number"
+        },
+        "expires_at": {
+          "type": "number"
+        }
+      }
+    }
+  }
+}

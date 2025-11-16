@@ -5,24 +5,25 @@
 import { SuiClientOptions } from '@mysten/sui/client';
 import { WalrusClientConfig } from '@mysten/walrus';
 
+// Re-export ML dataset types from common
 export type { 
-  BatchIntent, 
-  BatchManifest,
-  BatchArchive,
-  ArchivedSolution,
-  ExecutionOutcome,
-  MLFeatures,
-  UserHistoryAggregated,
-  TrainingDatasetMetadata,
+  ClassificationFeedback,
+  IntentClassificationTrainingData,
   ModelMetadata,
-  StorageResult
+  TrainingDatasetMetadata
 } from '@intenus/common';
 
+// Re-export IGS types (Intent is exported as alias for IGSIntent)
+export type {
+  Intent as IGSIntent,
+  IGSSolution
+} from '@intenus/common';
+
+// Re-export Walrus types
 export type { 
   WalrusClientConfig,
   WalrusOptions 
 } from '@mysten/walrus';
-
 
 export interface IntenusWalrusConfig {
   network: 'mainnet' | 'testnet';
@@ -30,9 +31,12 @@ export interface IntenusWalrusConfig {
   suiClientOptions?: SuiClientOptions;
 }
 
-
-
-
+export interface StorageResult {
+  blob_id: string;
+  size_bytes: number;
+  created_at: number;
+  epochs: number;
+}
 
 export class WalrusStorageError extends Error {
   constructor(message: string, public code: string) {

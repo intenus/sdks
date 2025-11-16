@@ -76,3 +76,5 @@ bun.lockb
 .env.*.local
 
 INSTRUCTIONS.md
+
+WALRUS_*.md

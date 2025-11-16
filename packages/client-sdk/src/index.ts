@@ -16,6 +16,7 @@ export {
 export type {
   IntenusClientConfig,
   SolverProfile,
+  RankedPTB,
   BatchSummary,
   SlashEvidence,
   SlashRecord,
@@ -54,9 +55,27 @@ export { WalrusIntentHelper } from './walrus-helper.js';
 // Re-export common types for convenience
 export type {
   Intent,
-  RankedPTB,
-  ExpectedOutcome,
-  ExecutionSummary,
-  Explanation,
-  StorageResult,
+  SolutionSubmission,
+  IntentClassification,
+  PreRankingResult,
+  RankedSolution,
+  RankingResult
+} from '@intenus/common';
+
+// Re-export IGS types
+export type {
+  Intent as IGSIntent,
+  IGSIntentType,
+  IGSOperation,
+  AssetSpec as IGSAssetFlow,
+  IGSAmount,
+  IGSExpectedOutcome,
+  Constraints as IGSConstraints,
+  ExecutionPreferences as IGSPreferences,
+  IGSTiming,
+  IntentMetadata as IGSMetadata,
+  IGSSolution,
+  IGSRankedSolution,
+  IGSValidationResult,
+  IGSValidationError
 } from '@intenus/common';
