@@ -7,7 +7,7 @@
  */
 export const INTENUS_PACKAGE_ID = {
   mainnet: '',
-  testnet: '0x83b321c90dcbc37ab51c65f577b01d88fdd640ce8bd79fe205cfb169fadd381a',
+  testnet: '0xb9d9333ca0cb165c6337696bc02bc66a308291b6b8a104810e57a66a2ac24f76',
   devnet: ''
 } as const;
 
@@ -18,26 +18,50 @@ export const SHARED_OBJECTS = {
   mainnet: {
     solverRegistry: '',
     slashManager: '',
-    batchManager: '',
     teeVerifier: '',
     policyRegistry: '',
     clock: '0x6'
   },
   testnet: {
-    solverRegistry: '0x8322967aa080cafdac99c5e2de42611c066aeb7f55458d6f415826fd00721c52',
-    slashManager: '0xd2364ea78617f496fe02dc439b365f12a961317768156cc1ba24e54eaeaf378e',
-    batchManager: '0x2c510fc0e8aa21b1f8112242ba74b817f5092dc5a7e23bc480fa6eb477695bd4',
-    teeVerifier: '0x861871ec1bd7ac5e3559f68723ba2c76bf4ce6f2f88e3bf0ba131715e0397ae6',
-    policyRegistry: '0x44f14a883d639302e7708535525a79a847be9a5b0a6ba39e886bbb9ab06d4f7f',
+    solverRegistry: '0xa5955d70c88f90a87b81a4c9493a9eb53ac1d7f392b60c528194c092f94d652e',
+    slashManager: '0x6e561036e166f362ffe7b1defccae1bc120c0dead05de2ad75174fe1b5c5e330',
+    teeVerifier: '0x9bf41dc9d81c0d2ac8c78a25eb60ecc12ab46b513304e0e9edb0e5ede8f310af',
+    policyRegistry: '0x95aa1b72ab27d6b16134bd6157f04808274e98d456038538a74eccb3ddf34517',
     clock: '0x6'
   },
   devnet: {
     solverRegistry: '',
     slashManager: '',
-    batchManager: '',
     teeVerifier: '',
     policyRegistry: '',
     clock: '0x6'
+  }
+} as const;
+
+/**
+ * Admin capabilities and package-level objects
+ */
+export const ADMIN_CAPS = {
+  mainnet: {
+    solverRegistryAdminCap: '',
+    slashManagerAdminCap: '',
+    teeVerifierAdminCap: '',
+    packageUpgradeCap: '',
+    packagePublisher: ''
+  },
+  testnet: {
+    solverRegistryAdminCap: '0xec1adbd61ba4f6c7615d13539c7491cfb9d5ca00d65995680151a937dc895549',
+    slashManagerAdminCap: '0xe9de82865a5a81fd1f65b968ef8ba1101cf6d195e5c1133e1463ddde88bbbadb',
+    teeVerifierAdminCap: '0x5596772626feb77faafdf49544c0bb968d0e338f39e89bbf3d02d33698452a1d',
+    packageUpgradeCap: '0x57bb108f36ee8c848a46444af60ff6c52ade4fa74adbb10bd0e821059558b813',
+    packagePublisher: '0xfb64e69eb33d5fd21dea680aea62d6299d66dc4ce1f32958230c1a2f66eb4cc0'
+  },
+  devnet: {
+    solverRegistryAdminCap: '',
+    slashManagerAdminCap: '',
+    teeVerifierAdminCap: '',
+    packageUpgradeCap: '',
+    packagePublisher: ''
   }
 } as const;
 
@@ -47,7 +71,6 @@ export const SHARED_OBJECTS = {
 export const MODULES = {
   SOLVER_REGISTRY: 'solver_registry',
   SLASH_MANAGER: 'slash_manager',
-  BATCH_MANAGER: 'batch_manager',
   TEE_VERIFIER: 'tee_verifier',
   SEAL_POLICY_COORDINATOR: 'seal_policy_coordinator'
 } as const;
@@ -71,14 +94,6 @@ export const SLASH_CONSTANTS = {
   SIGNIFICANT_SLASH_BPS: 2000, // 20%
   MALICIOUS_SLASH_BPS: 10000,  // 100%
   APPEAL_WINDOW_MS: 86400000   // 24 hours
-} as const;
-
-/**
- * Batch constants
- */
-export const BATCH_CONSTANTS = {
-  DEFAULT_BATCH_DURATION_MS: 10000, // 10 seconds
-  DEFAULT_SOLVER_WINDOW_MS: 5000    // 5 seconds
 } as const;
 
 /**
