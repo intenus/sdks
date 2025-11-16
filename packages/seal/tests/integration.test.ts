@@ -1,8 +1,5 @@
 /**
  * Integration tests for Seal encryption/decryption
- * Requires environment variables:
- * - INTENUS_ADMIN_PRIVATE_KEY
- * - INTENUS_ADMIN_PRIVATE_KEY (optional, for solver tests)
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';

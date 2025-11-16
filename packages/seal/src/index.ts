@@ -15,8 +15,7 @@ export type {
   DecryptionRequest,
   SolverCredentials,
   PolicyType,
-  PolicyTypeValue,
-  SealError
+  PolicyTypeValue
 } from './types.js';
 
 export { IntenusSealError, POLICY_TYPES } from './types.js';
