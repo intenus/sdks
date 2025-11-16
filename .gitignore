@@ -76,3 +76,5 @@ bun.lockb
 .env.*.local
 
 INSTRUCTIONS.md
+*/**/WALRUS_AGGREGATOR_API.md
+*/**/WALRUS_PUBLISHER_API.md
