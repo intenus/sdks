@@ -271,8 +271,8 @@ export function assertValidIGSIntent(obj: any): asserts obj is IGSIntent {
   const result = IGSSchemaValidator.validate(obj);
   if (!result.valid) {
     const errorMessages = result.errors
-      .filter(e => e.severity === 'error')
-      .map(e => `${e.field}: ${e.message}`)
+      .filter((e: IGSValidationError) => e.severity === 'error')
+      .map((e: IGSValidationError) => `${e.field}: ${e.message}`)
       .join(', ');
     throw new Error(`Invalid IGS Intent: ${errorMessages}`);
   }

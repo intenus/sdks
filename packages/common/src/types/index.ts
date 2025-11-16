@@ -1,18 +1,32 @@
 export type {
   IGSIntent,
+  IGSIntentType,
   IGSObject,
   IGSOperation,
   IGSConstraints,
   IGSPreferences,
   IGSMetadata,
+  IGSAssetFlow,
+  IGSAmount,
+  IGSExpectedOutcome,
+  IGSRankingWeights,
+  IGSExecutionPreferences,
+  IGSPrivacyPreferences,
+  IGSRouting,
+  IGSLimitPrice,
+  IGSPolicy,
   IGSSolution,
   IGSRankedSolution,
   IGSValidationResult,
   IGSValidationError,
 } from './igs.js';
 
+// Export Zod schemas for validation
+export { IGSIntentSchema, IGSSolutionSchema, validateIGSIntent as validateIGSIntentZod, validateIGSSolution as validateIGSSolutionZod } from './igs.js';
+
 // Core types (PreRanking and Ranking)
 export type {
+  Intent,
   SolutionSubmission,
   IntentClassification,
   PreRankingResult,

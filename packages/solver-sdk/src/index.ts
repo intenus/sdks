@@ -30,16 +30,16 @@ export type {
 
 // Re-export IGS types for convenience
 export type {
-  Intent as IGSIntent,
+  IGSIntent,
   IGSIntentType,
+  IGSObject,
   IGSOperation,
-  AssetSpec as IGSAssetFlow,
+  IGSAssetFlow,
   IGSAmount,
   IGSExpectedOutcome,
-  Constraints as IGSConstraints,
-  ExecutionPreferences as IGSPreferences,
-  IGSTiming,
-  IntentMetadata as IGSMetadata,
+  IGSConstraints,
+  IGSPreferences,
+  IGSMetadata,
   IGSSolution,
   IGSRankedSolution,
   IGSValidationResult,

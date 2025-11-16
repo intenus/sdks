@@ -174,9 +174,9 @@ export class SolutionBuilder {
   }
 
   /**
-   * Build final IGS solution
+   * Build final IGS solution (minimal - for Walrus storage)
    * @param options - Build options including SuiClient for Tx serialization
-   * @returns Complete IGS solution ready for submission
+   * @returns Minimal IGS solution ready for Walrus storage
    */
   async build(options?: { client?: any }): Promise<IGSSolution> {
     // Build Tx bytes (requires SuiClient in production)
@@ -185,40 +185,20 @@ export class SolutionBuilder {
       : new Uint8Array(); // Placeholder - real implementation needs client
 
     const txHex = Buffer.from(txBytes).toString('hex');
-    const txHash = this.hashTx(txHex);
 
-    // Calculate compliance score based on completeness
-    const complianceScore = this.calculateComplianceScore();
-
+    // Return minimal IGS solution (for Walrus storage)
     const solution: IGSSolution = {
-      solution_id: crypto.randomUUID(),
-      intent_id: this.intentId,
       solver_address: this.solverAddress,
-      submitted_at: Date.now(),
       tx_bytes: txHex,
-      tx_hash: txHash,
-      promised_outputs: this.promisedOutputs,
-      estimated_gas: this.estimatedGas,
-      estimated_slippage_bps: this.estimatedSlippageBps,
-      protocol_fees: this.protocolFees,
-      surplus_calculation: this.surplusCalculation,
-      strategy_summary: {
-        protocols_used: this.protocols,
-        total_hops: this.totalHops,
-        execution_path: this.executionPath,
-        unique_techniques: this.uniqueTechniques,
-      },
-      compliance_score: complianceScore,
     };
 
     return solution;
   }
 
   /**
-   * Build final solution submission (legacy format)
+   * Build solution submission (on-chain reference)
    * @param options - Build options including SuiClient
    * @returns Solution submission and Tx bytes
-   * @deprecated Use build() instead for full IGS solution
    */
   async buildSubmission(options?: { client?: any }): Promise<{
     submission: SolutionSubmission;
@@ -240,6 +220,28 @@ export class SolutionBuilder {
   }
 
   /**
+   * Get solution metadata (for internal use / analytics)
+   * @returns Solution metadata with all builder state
+   */
+  getMetadata() {
+    return {
+      intent_id: this.intentId,
+      promised_outputs: this.promisedOutputs,
+      estimated_gas: this.estimatedGas,
+      estimated_slippage_bps: this.estimatedSlippageBps,
+      protocol_fees: this.protocolFees,
+      surplus_calculation: this.surplusCalculation,
+      strategy_summary: {
+        protocols_used: this.protocols,
+        total_hops: this.totalHops,
+        execution_path: this.executionPath,
+        unique_techniques: this.uniqueTechniques,
+      },
+      compliance_score: this.calculateComplianceScore(),
+    };
+  }
+
+  /**
    * Calculate compliance score based on solution completeness
    * @returns Compliance score (0-100)
    * @private
@@ -255,16 +257,5 @@ export class SolutionBuilder {
     if (this.surplusCalculation.surplus_usd === '0') score -= 10;
 
     return Math.max(0, score);
-  }
-
-  /**
-   * Generate hash for Tx bytes
-   * @param txHex - Tx bytes in hex format
-   * @returns Hash of the Tx
-   * @private
-   */
-  private hashTx(txHex: string): string {
-    // Simple hash implementation - in production use proper crypto hash
-    return `0x${Buffer.from(txHex).toString('base64').substring(0, 64)}`;
   }
 }
