@@ -20,14 +20,12 @@ export { addP2PTransfer, getSealPolicyForIntent, hashBytes } from './utils.js';
 
 // Re-export common types for convenience
 export type {
-  Batch,
   Intent,
   SolutionSubmission,
-  SolutionOutcome,
-  BatchManifest,
-  IntentReference,
-  WalrusBatchManifest,
-  StorageResult,
+  IntentClassification,
+  PreRankingResult,
+  RankedSolution,
+  RankingResult
 } from '@intenus/common';
 
 // Re-export IGS types for convenience

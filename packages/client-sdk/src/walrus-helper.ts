@@ -7,8 +7,8 @@
  */
 
 import type { Signer } from '@mysten/sui/cryptography';
-import type { Intent, StorageResult } from '@intenus/common';
-import type { IntenusWalrusClient } from '@intenus/walrus';
+import type { Intent } from '@intenus/common';
+import type { IntenusWalrusClient, StorageResult } from '@intenus/walrus';
 
 export class WalrusIntentHelper {
   constructor(private walrusClient: IntenusWalrusClient) {}
@@ -16,8 +16,8 @@ export class WalrusIntentHelper {
   /**
    * Stores an intent on Walrus.
    *
-   * The intent is stored at a temporary path and is expected to be moved into
-   * a batch by a backend process. It can be stored in either plain or encrypted format.
+   * The intent is stored as a blob and is expected to be managed by a backend process.
+   * It can be stored in either plain or encrypted format.
    *
    * @param intent The intent object to store.
    * @param signer A Sui Signer for authenticating the write operation.
@@ -31,14 +31,12 @@ export class WalrusIntentHelper {
     encrypted: boolean = false,
     encryptedData?: string
   ): Promise<StorageResult> {
-    const intentData = encrypted 
-      ? encryptedData! 
+    const intentData = encrypted
+      ? encryptedData!
       : JSON.stringify(intent);
-    
-    // Store to temporary location (backend will move to batch)
-    const path = `/intents/pending/${intent.intent_id}.json`;
+
+    // Store as blob (no path - walrus SDK handles ID-based storage)
     return this.walrusClient.storeRaw(
-      path,
       Buffer.from(intentData),
       1, // 1 epoch only (temporary)
       signer
@@ -69,9 +67,8 @@ export class WalrusIntentHelper {
     preferences: Record<string, any>,
     signer: Signer
   ): Promise<StorageResult> {
-    const path = `/users/${userAddress}/preferences.json`;
+    // Store as blob (no path - walrus SDK handles ID-based storage)
     return this.walrusClient.storeRaw(
-      path,
       Buffer.from(JSON.stringify(preferences)),
       30, // 30 epochs
       signer

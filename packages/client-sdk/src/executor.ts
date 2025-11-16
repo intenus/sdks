@@ -1,6 +1,6 @@
 import { Transaction } from '@mysten/sui/transactions';
 import { SuiClient } from '@mysten/sui/client';
-import type { RankedPTB } from '@intenus/common';
+import type { RankedPTB } from './types.js';
 
 /**
  * OPTIONAL: Helper for executing ranked PTBs

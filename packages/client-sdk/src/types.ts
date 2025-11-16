@@ -42,6 +42,18 @@ export enum SolverStatus {
 }
 
 /**
+ * Ranked Programmable Transaction Block
+ */
+export interface RankedPTB {
+  ptb_bytes: string; // Base64 encoded PTB
+  rank: number;
+  solver_address: string;
+  solution_id: string;
+  estimated_surplus: string;
+  gas_budget: string;
+}
+
+/**
  * Batch summary information
  */
 export interface BatchSummary {
