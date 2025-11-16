@@ -1,1 +1,1 @@
-export * from './paths.js';
+// Utils index - currently empty (paths removed)

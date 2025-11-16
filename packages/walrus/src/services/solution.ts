@@ -1,6 +1,6 @@
 /**
  * Solution Storage Service
- * Store and fetch IGSSolution data to/from Walrus
+ * Simple blob storage for IGSSolution
  */
 
 import type { Signer } from '@mysten/sui/cryptography';
@@ -15,7 +15,7 @@ export class SolutionStorageService extends BaseStorageService {
   }
 
   /**
-   * Store IGSSolution to Walrus
+   * Store IGSSolution as blob
    * @param solution IGSSolution object
    * @param epochs Storage duration in epochs
    * @param signer Sui signer
@@ -27,18 +27,28 @@ export class SolutionStorageService extends BaseStorageService {
     signer: Signer
   ): Promise<StorageResult> {
     const data = Buffer.from(JSON.stringify(solution), 'utf-8');
-    const path = `/solutions/${solution.solution_id}.json`;
-    
-    return this.client.storeRaw(path, data, epochs, signer);
+    const result = await this.client.walrusClient.writeBlob({
+      blob: new Uint8Array(data),
+      epochs,
+      deletable: true,
+      signer,
+    });
+
+    return {
+      blob_id: result.blobId,
+      size_bytes: data.length,
+      created_at: Date.now(),
+      epochs,
+    };
   }
 
   /**
-   * Fetch IGSSolution from Walrus by blob_id
+   * Fetch IGSSolution by blob_id
    * @param blob_id Walrus blob ID
    * @returns IGSSolution object
    */
   async fetch(blob_id: string): Promise<IGSSolution> {
-    const data = await this.client.fetchRaw(blob_id);
-    return JSON.parse(data.toString('utf-8')) as IGSSolution;
+    const data = await this.client.walrusClient.readBlob({ blobId: blob_id });
+    return JSON.parse(Buffer.from(data).toString('utf-8')) as IGSSolution;
   }
 }

@@ -1,20 +1,20 @@
 # Intenus Walrus SDK
 
-A TypeScript SDK for efficient decentralized storage on Walrus, optimized for Intenus protocol data structures.
+TypeScript SDK for decentralized storage on Walrus, designed for Intenus Protocol (IGS intents, solutions, and ML datasets).
 
 ## Features
 
-- **WalrusFile API**: Uses official Walrus SDK for optimal storage efficiency
-- **Automatic Optimization**: Walrus automatically chooses between single blobs and Quilts
-- **Structured Storage**: Organized paths for batches, archives, users, and ML training data
-- **Automatic Retry**: Built-in certification retry logic with exponential backoff
-- **Type Safety**: Full TypeScript support with comprehensive type definitions
-- **Multi-Service**: Dedicated services for different data types
+- **Simple Blob Storage**: IGS intents and solutions stored as single JSON blobs
+- **Multi-File Quilt Storage**: ML dataset versions with metadata, weights, samples, and feedback
+- **Builder Pattern**: Fluent API for constructing dataset version packages
+- **Type Safety**: Full TypeScript support with IGS schema types from `@intenus/common`
+- **Automatic Retry**: Built-in fetch retry logic with exponential backoff
+- **Official Walrus SDK**: Uses `@mysten/walrus` WalrusFile API for optimal efficiency
 
 ## Installation
 
 ```bash
-npm install @intenus/walrus
+npm install @intenus/walrus @mysten/walrus @mysten/sui
 ```
 
 ## Quick Start
@@ -24,171 +24,229 @@ import { IntenusWalrusClient } from '@intenus/walrus';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
 const client = new IntenusWalrusClient({
-  network: 'testnet', // or 'mainnet'
-  defaultEpochs: 1
+  network: 'testnet'
 });
 
 const signer = Ed25519Keypair.generate();
+```
 
-const manifest = {
-  batch_id: 'batch_001',
-  epoch: Math.floor(Date.now() / 1000),
-  intent_count: 2,
-  intents: [/* ... */],
+## Intent Storage
+
+Store and fetch IGS intents as simple blobs.
+
+```typescript
+import type { Intent as IGSIntent } from '@intenus/common';
+
+// Store intent
+const intent: IGSIntent = {
+  intent_id: 'intent_123',
+  intent_type: 'spot_trade',
+  // ... other IGS fields
 };
 
-const result = await client.batches.storeManifest(manifest, signer);
+const result = await client.intents.store(intent, 1, signer);
 console.log('Stored:', result.blob_id);
+// Returns: { blob_id: "xyz...", size_bytes: 1234, created_at: 1234567890, epochs: 1 }
+
+// Fetch intent
+const fetchedIntent = await client.intents.fetch(result.blob_id);
 ```
 
-## Storage Structure
+## Solution Storage
 
-The SDK organizes data in a structured hierarchy:
-
-```
-/batches/{epoch}/
-  └── batch_manifest.json        # BatchManifest (ALL intents inline)
-
-/archives/{epoch}/
-  └── batch_{batch_id}.json      # BatchArchive (outcomes + ML features)
-
-/users/{address}/
-  └── history_aggregated.json    # UserHistoryAggregated (preferences)
-
-/training/
-  ├── datasets/{version}/
-  │   ├── dataset_metadata.json  # TrainingDataset metadata
-  │   ├── features.parquet       # ML training features
-  │   └── labels.parquet         # ML training labels
-  └── models/{name}/{version}/
-      ├── model.onnx             # Trained model
-      └── model_metadata.json    # Model info (metrics, config)
-```
-
-## 🚀 Query Builder API (Recommended)
-
-The **WalrusQueryBuilder** provides the most flexible and efficient way to access data:
+Store and fetch IGS solutions as simple blobs.
 
 ```typescript
-// ===== DIRECT ACCESS BY BLOB_ID/QUILT_ID =====
+import type { IGSSolution } from '@intenus/common';
 
-// Get any data type by blob_id (fastest method)
-const batch = await client.query.getBatchById("E7_nNXvFU_3qZVu3OH1yycRG7LZlyn1-UxEDCDDqGGU");
-const dataset = await client.query.getTrainingDatasetById("rkcHpHQrornOymttgvSq3zvcmQEsMqzmeUM1HSY4ShU");
+// Store solution
+const solution: IGSSolution = {
+  solution_id: 'sol_456',
+  intent_id: 'intent_123',
+  // ... other IGS fields
+};
 
-// ===== OPTIMIZED QUILT ACCESS =====
+const result = await client.solutions.store(solution, 1, signer);
 
-// Get specific files from quilts by identifier
-const features = await client.query.getTrainingFeatures(quiltId, "v1.0.123");
-const model = await client.query.getModelFile(quiltId, "user_ranker", "v2.1");
-
-// Get files by tags (multiple results)
-const swapIntents = await client.query.getIntentsByCategory(quiltId, "swap");
-const jsonFiles = await client.query.getFromQuiltByTags(quiltId, { 
-  'content-type': 'application/json' 
-});
-
-// List all files in a quilt
-const contents = await client.query.listQuiltContents(quiltId);
-
-// ===== FILTERED QUERIES (requires index) =====
-
-// First, add data to index when storing
-const result = await client.batches.storeManifest(manifest, signer);
-client.query.addBatchToIndex(manifest, result.blob_id);
-
-// Then query by filters
-const batches = await client.query.getBatchesBy({
-  epoch: 12345,
-  intent_count_min: 10,
-  categories: ['swap', 'lending']
-});
-
-const datasets = await client.query.getTrainingDatasetsBy({
-  data_quality_score_min: 0.9,
-  batch_count_min: 100
-});
+// Fetch solution
+const fetchedSolution = await client.solutions.fetch(result.blob_id);
 ```
 
-## Legacy Services
+## Dataset Storage (ML Training Data)
 
-### Batch Service
+Store ML dataset versions as multi-file quilts using the builder pattern.
+
+### Creating a Dataset Version
 
 ```typescript
-// Store batch manifest
-await client.batches.storeManifest(manifest, signer);
+import type { ModelMetadata, IntentClassificationTrainingData, ClassificationFeedback } from '@intenus/common';
 
-// Fetch batch manifest by epoch
-const manifest = await client.batches.fetchManifest(epoch);
+// Create builder
+const builder = client.datasets.createVersion('v1.0.0');
 
-// Store intents efficiently (Walrus chooses optimal method)
-const result = await client.batches.storeIntents(
-  intents,
-  batchId, 
-  signer
-);
+// Add metadata
+const metadata: ModelMetadata = {
+  model_id: 'intent_classifier_v1',
+  model_version: 'v1.0.0',
+  architecture: {
+    type: 'gradient_boosting',
+    hyperparameters: { n_estimators: 100, max_depth: 6 }
+  },
+  training: {
+    dataset_version: 'v1.0.0',
+    total_samples: 1000,
+    training_samples: 800,
+    validation_samples: 200,
+    trained_at: Date.now()
+  },
+  metrics: {
+    accuracy: 0.92,
+    precision: 0.91,
+    recall: 0.93,
+    f1_score: 0.92,
+    per_class_metrics: []
+  },
+  feature_importance: [],
+  artifacts: {
+    model_weights_ref: 'weights.pkl',
+    scaler_ref: null,
+    encoder_ref: null
+  },
+  status: 'deployed'
+};
 
-// Fetch intents by epoch (from manifest structure)
-const intentsByEpoch = await client.batches.fetchIntentsByEpoch(epoch);
+builder.withMetadata(metadata);
 
-// Fetch intents by blob ID (direct access)
-const intents = await client.batches.fetchIntents(result.blobId);
+// Add model weights (pickle binary)
+const weightsBuffer = Buffer.from(/* ... model weights ... */);
+builder.withWeights(weightsBuffer);
 
-// Fetch single intent by epoch and ID
-const intent = await client.batches.fetchIntentByEpoch(epoch, 'intent_1');
+// Add training samples (JSONL)
+const samples: IntentClassificationTrainingData[] = [
+  {
+    sample_id: 'sample_1',
+    intent_metadata: { intent_id: 'intent_1', intent_type: 'spot_trade', created_at: 1234567890 },
+    raw_features: {
+      solver_window_ms: 5000,
+      max_slippage_bps: 50,
+      optimization_goal: 'maximize_output',
+      // ... other features
+    },
+    ground_truth: {
+      label_value: 'spot_trade',
+      confidence: 1.0,
+      labeling_method: 'ground_truth',
+      labeled_at: 1234567890
+    },
+    label_info: {
+      labeling_method: 'ground_truth',
+      labeled_by: 'system',
+      labeled_at: 1234567890
+    },
+    dataset_version: 'v1.0.0'
+  }
+];
+builder.withTrainingSamples(samples);
 
-// Fetch single intent by blob ID and ID
-const singleIntent = await client.batches.fetchIntent(result.blobId, 'intent_1');
+// Add feedback data (JSONL)
+const feedback: ClassificationFeedback[] = [
+  {
+    feedback_id: 'fb_1',
+    intent_id: 'intent_1',
+    predicted_type: 'spot_trade',
+    actual_type: 'spot_trade',
+    confidence: 0.95,
+    correct: true,
+    feedback_source: 'execution_outcome',
+    timestamp: 1234567890
+  }
+];
+builder.withFeedback(feedback);
+
+// Store as quilt (multi-file package)
+const result = await client.datasets.storeVersion(builder, 5, signer);
+console.log('Stored:', result.quilt_id, 'Files:', result.files);
+// Returns: {
+//   blob_id: "xyz...",
+//   quilt_id: "xyz...",
+//   size_bytes: 50000,
+//   files: ["metadata.json", "weights.pkl", "training_samples.jsonl", "feedback.jsonl"],
+//   created_at: 1234567890,
+//   epochs: 5
+// }
 ```
 
-### Archive Service
+### Fetching Dataset Components
 
 ```typescript
-await client.archives.storeArchive(archive, signer);
+// Fetch metadata
+const metadata = await client.datasets.fetchMetadata(quilt_id);
 
-const archive = await client.archives.fetchArchive(epoch, batchId);
+// Fetch model weights
+const weights = await client.datasets.fetchWeights(quilt_id);
+
+// Fetch training samples
+const samples = await client.datasets.fetchTrainingSamples(quilt_id);
+
+// Fetch feedback
+const feedback = await client.datasets.fetchFeedback(quilt_id);
+
+// List all files in dataset version
+const files = await client.datasets.listFiles(quilt_id);
+// Returns: ["metadata.json", "weights.pkl", "training_samples.jsonl", "feedback.jsonl"]
 ```
 
-### User Service
+## Storage Architecture
+
+### Blob Storage (Intents & Solutions)
+- Single JSON object per blob
+- Direct access via `blob_id`
+- Fast write/read operations
+- Used for: IGSIntent, IGSSolution
+
+### Quilt Storage (Dataset Versions)
+- Multiple files bundled into one quilt
+- Single `quilt_id` for entire package
+- Files accessed by identifier within quilt
+- Used for: ML dataset versions
+
+**Dataset Version Structure:**
+```
+quilt_id/
+├── metadata.json           # ModelMetadata
+├── weights.pkl            # Model weights (binary)
+├── training_samples.jsonl # Training data (line-delimited JSON)
+└── feedback.jsonl         # Feedback data (line-delimited JSON)
+```
+
+## Raw Storage (Advanced)
+
+For custom use cases, use raw blob storage:
 
 ```typescript
-await client.users.storeHistory(history, signer);
+// Store raw data
+const data = Buffer.from('custom data');
+const result = await client.storeRaw(data, 1, signer);
 
-const history = await client.users.fetchHistory(userAddress);
+// Fetch raw data
+const fetched = await client.fetchRaw(result.blob_id);
+
+// Check if blob exists
+const exists = await client.exists(result.blob_id);
 ```
-
-### Training Service
-
-```typescript
-await client.training.storeDataset(dataset, version, signer);
-
-// Store ML model
-await client.training.storeModel(modelData, name, version, signer);
-
-// Fetch model metadata
-const metadata = await client.training.fetchModelMetadata(name, version);
-```
-
-## Storage Optimization
-
-Walrus automatically optimizes storage based on file size and count:
-
-- **Single Files**: Stored as individual blobs for optimal access
-- **Multiple Small Files**: Automatically batched into Quilts for cost savings
-- **Large Files**: Stored individually to avoid Quilt overhead
-- **Mixed Sizes**: Intelligently grouped for optimal efficiency
-
-Cost savings can reach **400x** for small files when Quilts are used automatically.
 
 ## Configuration
 
 ```typescript
 const client = new IntenusWalrusClient({
-  network: 'testnet',
-  defaultEpochs: 1,
-  publisherUrl: 'https://publisher.walrus.space',
-  aggregatorUrl: 'https://aggregator.walrus.space',
-  uploadRelayUrl: 'https://upload-relay.testnet.walrus.space'
+  network: 'testnet', // or 'mainnet'
+  walrusConfig: {
+    // Optional: custom Walrus client configuration
+    uploadRelay: {
+      host: 'https://custom-relay.example.com',
+      timeout: 60_000
+    }
+  }
 });
 ```
 
@@ -198,27 +256,52 @@ const client = new IntenusWalrusClient({
 import { WalrusStorageError, WalrusFetchError } from '@intenus/walrus';
 
 try {
-  await client.batches.storeManifest(manifest, signer);
+  await client.intents.store(intent, 1, signer);
 } catch (error) {
   if (error instanceof WalrusStorageError) {
-    console.error('Storage failed:', error.message);
+    console.error('Storage failed:', error.code, error.message);
   } else if (error instanceof WalrusFetchError) {
-    console.error('Fetch failed:', error.message);
+    console.error('Fetch failed for blob:', error.blobId, error.message);
   }
 }
 ```
 
-## Types
+## Type Exports
 
 ```typescript
-import type { 
-  BatchManifest,
-  BatchArchive,
-  UserHistoryAggregated,
-  TrainingDatasetMetadata,
-  ModelMetadata,
-  QuiltResult
+// Services
+import type {
+  IntentStorageService,
+  SolutionStorageService,
+  DatasetStorageService,
+  DatasetVersionBuilder
 } from '@intenus/walrus';
+
+// Types
+import type {
+  IntenusWalrusConfig,
+  StorageResult,
+  DatasetVersionResult
+} from '@intenus/walrus';
+
+// IGS types (re-exported from @intenus/common)
+import type {
+  IGSIntent,
+  IGSSolution,
+  ModelMetadata,
+  IntentClassificationTrainingData,
+  ClassificationFeedback
+} from '@intenus/walrus';
+```
+
+## Constants
+
+```typescript
+import { DEFAULT_EPOCHS, WALRUS_NETWORKS } from '@intenus/walrus';
+
+console.log(DEFAULT_EPOCHS.INTENT);          // 1 epoch
+console.log(DEFAULT_EPOCHS.SOLUTION);        // 1 epoch
+console.log(DEFAULT_EPOCHS.DATASET_VERSION); // 5 epochs
 ```
 
 ## Development

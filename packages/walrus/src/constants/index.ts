@@ -1,20 +1,15 @@
 /**
- * Re-export from common for backward compatibility
+ * Walrus storage constants
  */
 export { NETWORKS as WALRUS_NETWORKS } from '@intenus/common';
 
 export const DEFAULT_EPOCHS = {
-  BATCH_MANIFEST: 1,      // Short-term
-  BATCH_ARCHIVE: 5,     // Long-term
-  USER_HISTORY: 3,       // Medium-term
-  TRAINING_DATA: 5,     // Long-term
-  ML_MODELS: 5,         // Long-term
+  INTENT: 1,           // Short-term intent storage
+  SOLUTION: 1,         // Short-term solution storage
+  DATASET_VERSION: 5,  // Long-term ML dataset versions
 } as const;
 
 export const SCHEMA_VERSIONS = {
-  BATCH_MANIFEST: '1.0.0',
-  BATCH_ARCHIVE: '1.0.0',
-  USER_HISTORY: '1.0.0',
-  TRAINING_DATASET: '1.0.0',
+  DATASET_VERSION: '1.0.0',
   MODEL_METADATA: '1.0.0',
 } as const;

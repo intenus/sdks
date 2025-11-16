@@ -1,6 +1,6 @@
 /**
  * Intent Storage Service
- * Store and fetch IGSIntent data to/from Walrus
+ * Simple blob storage for IGSIntent
  */
 
 import type { Signer } from '@mysten/sui/cryptography';
@@ -15,7 +15,7 @@ export class IntentStorageService extends BaseStorageService {
   }
 
   /**
-   * Store IGSIntent to Walrus
+   * Store IGSIntent as blob
    * @param intent IGSIntent object
    * @param epochs Storage duration in epochs
    * @param signer Sui signer
@@ -27,18 +27,28 @@ export class IntentStorageService extends BaseStorageService {
     signer: Signer
   ): Promise<StorageResult> {
     const data = Buffer.from(JSON.stringify(intent), 'utf-8');
-    const path = `/intents/${intent.intent_id}.json`;
-    
-    return this.client.storeRaw(path, data, epochs, signer);
+    const result = await this.client.walrusClient.writeBlob({
+      blob: new Uint8Array(data),
+      epochs,
+      deletable: true,
+      signer,
+    });
+
+    return {
+      blob_id: result.blobId,
+      size_bytes: data.length,
+      created_at: Date.now(),
+      epochs,
+    };
   }
 
   /**
-   * Fetch IGSIntent from Walrus by blob_id
+   * Fetch IGSIntent by blob_id
    * @param blob_id Walrus blob ID
    * @returns IGSIntent object
    */
   async fetch(blob_id: string): Promise<IGSIntent> {
-    const data = await this.client.fetchRaw(blob_id);
-    return JSON.parse(data.toString('utf-8')) as IGSIntent;
+    const data = await this.client.walrusClient.readBlob({ blobId: blob_id });
+    return JSON.parse(Buffer.from(data).toString('utf-8')) as IGSIntent;
   }
 }

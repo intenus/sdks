@@ -21,11 +21,10 @@ export type * from './types/index.js';
 export type {
   IntentStorageService,
   SolutionStorageService,
-  MLStorageService
+  DatasetStorageService,
+  DatasetVersionBuilder,
+  DatasetVersionResult
 } from './services/index.js';
-
-// Utilities
-export { StoragePathBuilder } from './utils/index.js';
 
 // Constants
 export { 
