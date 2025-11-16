@@ -18,3 +18,7 @@ export { default as coreSchema } from "./schemas/core-schema.json";
 export { default as igsSchema } from "./schemas/igs-intent-schema.json";
 export { default as solutionSchema } from "./schemas/igs-solution-schema.json";
 export { default as datasetSchema } from "./schemas/dataset-schema.json";
+
+// Export builders
+export { IntentBuilder } from "./builders/intent-builder.js";
+export { SolutionBuilder } from "./builders/solution-builder.js";

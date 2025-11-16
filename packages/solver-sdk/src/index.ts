@@ -1,7 +1,7 @@
 // Export main classes
 export { SolverListener } from './listener.js';
-export { SolutionBuilder } from './builder.js';
 export { P2PMatcher } from './matcher.js';
+export { SolutionBuilder } from '@intenus/common';
 
 // Export IGS classes
 export { 

@@ -1,4 +1,4 @@
-import type { Intent, IGSIntentType } from '@intenus/common';
+import { Intent, IGSIntentType } from "../types";
 
 /**
  * Fluent API for building IGS intents

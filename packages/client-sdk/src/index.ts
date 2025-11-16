@@ -1,5 +1,5 @@
 // Export main classes
-export { IntentBuilder } from './intent-builder.js';
+export { IntentBuilder } from '@intenus/common';
 
 // Main client
 export { IntenusProtocolClient } from './client.js';

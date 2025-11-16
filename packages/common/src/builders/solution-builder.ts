@@ -1,4 +1,4 @@
-import type { SolutionSubmission, IGSSolution } from '@intenus/common';
+import type { SolutionSubmission, IGSSolution } from '../types/index.js';
 import { Transaction } from '@mysten/sui/transactions';
 
 /**
