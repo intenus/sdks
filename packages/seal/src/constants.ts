@@ -20,25 +20,25 @@ export const INTENUS_PACKAGE_ID = {
  */
 export const SHARED_OBJECTS = {
   mainnet: {
-    policyRegistry: '',
+    enclaveConfig: '',
     solverRegistry: '',
-    batchManager: '',
+    registry: '',
     slashManager: '',
     teeVerifier: '',
     clock: '0x6'
   },
   testnet: {
-    policyRegistry: '0x44f14a883d639302e7708535525a79a847be9a5b0a6ba39e886bbb9ab06d4f7f',
+    enclaveConfig: '0x44f14a883d639302e7708535525a79a847be9a5b0a6ba39e886bbb9ab06d4f7f',
     solverRegistry: '0x8322967aa080cafdac99c5e2de42611c066aeb7f55458d6f415826fd00721c52',
-    batchManager: '0x2c510fc0e8aa21b1f8112242ba74b817f5092dc5a7e23bc480fa6eb477695bd4',
+    registry: '0x2c510fc0e8aa21b1f8112242ba74b817f5092dc5a7e23bc480fa6eb477695bd4',
     slashManager: '0xd2364ea78617f496fe02dc439b365f12a961317768156cc1ba24e54eaeaf378e',
     teeVerifier: '0x861871ec1bd7ac5e3559f68723ba2c76bf4ce6f2f88e3bf0ba131715e0397ae6',
     clock: '0x6'
   },
   devnet: {
-    policyRegistry: '',
+    enclaveConfig: '',
     solverRegistry: '',
-    batchManager: '',
+    registry: '',
     slashManager: '',
     teeVerifier: '',
     clock: '0x6'
@@ -83,13 +83,12 @@ export const DEFAULT_CONFIG = {
 export const POLICY_MODULES = {
   SOLVER_REGISTRY: 'solver_registry',
   SEAL_POLICY_COORDINATOR: 'seal_policy_coordinator',
-  BATCH_MANAGER: 'batch_manager'
+  REGISTRY: 'registry'
 } as const;
 
 export const SEAL_APPROVE_FUNCTIONS = {
   INTENT: 'seal_approve_intent',
-  STRATEGY: 'seal_approve_strategy', 
-  HISTORY: 'seal_approve_history'
+  SOLUTION: 'seal_approve_solution'
 } as const;
 
 export const ERROR_CODES = {

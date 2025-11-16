@@ -48,20 +48,10 @@ export interface IntentEncryptionConfig extends SealPolicyConfig {
 }
 
 /**
- * Strategy encryption config for solver algorithms
+ * Solution encryption config for solver solutions
  */
-export interface StrategyEncryptionConfig extends SealPolicyConfig {
-  routerAccess: boolean;
-  adminUnlockTime?: number;
+export interface SolutionEncryptionConfig extends SealPolicyConfig {
   isPublic: boolean;
-}
-
-/**
- * History encryption config with granular access levels
- */
-export interface HistoryEncryptionConfig extends SealPolicyConfig {
-  routerAccessLevel: number;
-  userCanRevoke: boolean;
 }
 
 /**
@@ -84,25 +74,14 @@ export interface DecryptionRequest {
   txBytes: Uint8Array;
 }
 
-/**
- * Solver identification credentials for policy validation
- */
-export interface SolverCredentials {
-  solverId: string;
-  privateKey: string;
-  registryId: string;
-}
-
 export interface PolicyType {
   INTENT: 'intent';
-  STRATEGY: 'strategy';
-  HISTORY: 'history';
+  SOLUTION: 'solution';
 }
 
 export const POLICY_TYPES: PolicyType = {
   INTENT: 'intent',
-  STRATEGY: 'strategy',
-  HISTORY: 'history'
+  SOLUTION: 'solution'
 } as const;
 
 export type PolicyTypeValue = PolicyType[keyof PolicyType];

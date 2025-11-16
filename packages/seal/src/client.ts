@@ -6,11 +6,9 @@
 import type {
   IntenusSealConfig,
   IntentEncryptionConfig,
-  StrategyEncryptionConfig,
-  HistoryEncryptionConfig,
+  SolutionEncryptionConfig,
   EncryptionResult,
   DecryptionRequest,
-  SolverCredentials,
 } from './types.js';
 import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
 import { SealClient, SessionKey } from '@mysten/seal';
@@ -162,17 +160,17 @@ export class IntenusSealClient {
   }
 
   /**
-   * Encrypt solver strategy or algorithm data.
-   * Keeps solver strategies private with configurable access control.
-   * 
-   * @param data - Strategy data as byte array
-   * @param config - Strategy encryption config
+   * Encrypt solver solution data.
+   * Keeps solver solutions private with configurable access control.
+   *
+   * @param data - Solution data as byte array
+   * @param config - Solution encryption config
    * @param signer - Solver's keypair
-   * @returns Encrypted strategy with policy metadata
+   * @returns Encrypted solution with policy metadata
    */
-  async encryptStrategy(
+  async encryptSolution(
     data: Uint8Array,
-    config: StrategyEncryptionConfig,
+    config: SolutionEncryptionConfig,
     signer: Signer
   ): Promise<EncryptionResult> {
     try {
@@ -192,44 +190,7 @@ export class IntenusSealClient {
       };
     } catch (error: any) {
       throw new IntenusSealError(
-        `Failed to encrypt strategy: ${error.message}`,
-        ERROR_CODES.ENCRYPTION_FAILED,
-        error
-      );
-    }
-  }
-
-  /**
-   * Encrypt user interaction history for analytics while preserving privacy.
-   * 
-   * @param data - User history data as byte array
-   * @param config - History encryption config with access levels
-   * @param signer - User or backend service keypair
-   * @returns Encrypted history with policy metadata
-   */
-  async encryptHistory(
-    data: Uint8Array,
-    config: HistoryEncryptionConfig,
-    signer: Signer
-  ): Promise<EncryptionResult> {
-    try {
-      const { encryptedObject, key } = await this.sealClient.encrypt({
-        threshold: config.threshold,
-        packageId: config.packageId,
-        id: config.policyId,
-        data
-      });
-
-      return {
-        encryptedData: encryptedObject,
-        backupKey: key,
-        policyId: config.policyId,
-        packageId: config.packageId,
-        threshold: config.threshold
-      };
-    } catch (error: any) {
-      throw new IntenusSealError(
-        `Failed to encrypt history: ${error.message}`,
+        `Failed to encrypt solution: ${error.message}`,
         ERROR_CODES.ENCRYPTION_FAILED,
         error
       );
@@ -262,18 +223,14 @@ export class IntenusSealClient {
   }
 
   /**
-   * Build transaction to approve intent access for solvers.
+   * Build transaction to approve intent access.
    * Calls seal_approve_intent on the protocol contract.
-   * 
-   * @param policyId - Hex-encoded policy identifier
-   * @param solverCredentials - Solver identity credentials
-   * @param batchId - Optional batch identifier for context
+   *
+   * @param intentObjectId - Intent object ID
    * @returns Transaction ready for signing
    */
   createIntentApprovalTx(
-    policyId: string,
-    solverCredentials: SolverCredentials,
-    batchId?: string
+    intentObjectId: string
   ): Transaction {
     const protocolPackageId = INTENUS_PACKAGE_ID[this.config.network];
     const sharedObjects = SHARED_OBJECTS[this.config.network];
@@ -282,8 +239,8 @@ export class IntenusSealClient {
     tx.moveCall({
       target: `${protocolPackageId}::${POLICY_MODULES.SEAL_POLICY_COORDINATOR}::${SEAL_APPROVE_FUNCTIONS.INTENT}`,
       arguments: [
-        tx.pure.vector("u8", fromHex(policyId)),
-        tx.object(sharedObjects.policyRegistry),
+        tx.object(intentObjectId),
+        tx.object(sharedObjects.enclaveConfig),
         tx.object(sharedObjects.solverRegistry),
         tx.object(sharedObjects.clock)
       ]
@@ -293,22 +250,20 @@ export class IntenusSealClient {
   }
 
   /**
-   * Create transaction for seal_approve_strategy
+   * Create transaction for seal_approve_solution
    */
-  createStrategyApprovalTx(
-    policyId: string,
-    solverCredentials: SolverCredentials
+  createSolutionApprovalTx(
+    solutionObjectId: string
   ): Transaction {
     const protocolPackageId = INTENUS_PACKAGE_ID[this.config.network];
     const sharedObjects = SHARED_OBJECTS[this.config.network];
     const tx = new Transaction();
 
     tx.moveCall({
-      target: `${protocolPackageId}::${POLICY_MODULES.SEAL_POLICY_COORDINATOR}::${SEAL_APPROVE_FUNCTIONS.STRATEGY}`,
+      target: `${protocolPackageId}::${POLICY_MODULES.SEAL_POLICY_COORDINATOR}::${SEAL_APPROVE_FUNCTIONS.SOLUTION}`,
       arguments: [
-        tx.pure.vector("u8", fromHex(policyId)),
-        tx.object(sharedObjects.policyRegistry),
-        tx.object(sharedObjects.solverRegistry),
+        tx.object(solutionObjectId),
+        tx.object(sharedObjects.enclaveConfig),
         tx.object(sharedObjects.clock)
       ]
     });
@@ -317,73 +272,23 @@ export class IntenusSealClient {
   }
 
   /**
-   * Create transaction for seal_approve_history
-   */
-  createHistoryApprovalTx(
-    policyId: string,
-    userAddress: string,
-    accessLevel?: number
-  ): Transaction {
-    const protocolPackageId = INTENUS_PACKAGE_ID[this.config.network];
-    const sharedObjects = SHARED_OBJECTS[this.config.network];
-    const tx = new Transaction();
-
-    tx.moveCall({
-      target: `${protocolPackageId}::${POLICY_MODULES.SEAL_POLICY_COORDINATOR}::${SEAL_APPROVE_FUNCTIONS.HISTORY}`,
-      arguments: [
-        tx.pure.vector("u8", fromHex(policyId)),
-        tx.object(sharedObjects.policyRegistry),
-        tx.object(sharedObjects.solverRegistry)
-      ]
-    });
-
-    return tx;
-  }
-
-  /**
-   * Decrypt intent data if solver is authorized by policy.
+   * Decrypt intent data if solver is authorized.
    * Automatically handles session key creation and approval transaction building.
-   * 
+   *
    * @param encryptedData - Encrypted intent bytes
-   * @param policyId - Policy identifier for access control
-   * @param solverCredentials - Solver identity
+   * @param intentObjectId - Intent object ID for access control
    * @param signer - Solver's keypair
-   * @param batchId - Optional batch context
    * @returns Decrypted intent data
    */
   async decryptIntent(
     encryptedData: Uint8Array,
-    policyId: string,
-    solverCredentials: SolverCredentials,
-    signer: Signer,
-    batchId?: string
-  ): Promise<Uint8Array> {
-    const protocolPackageId = INTENUS_PACKAGE_ID[this.config.network];
-    const sessionKey = await this.getSessionKey(protocolPackageId, signer);
-    
-    const tx = this.createIntentApprovalTx(policyId, solverCredentials, batchId);
-    const txBytes = await tx.build({ client: this.suiClient, onlyTransactionKind: true });
-
-    return this.decrypt({
-      encryptedData,
-      sessionKey,
-      txBytes
-    });
-  }
-
-  /**
-   * Decrypt strategy data for authorized solver
-   */
-  async decryptStrategy(
-    encryptedData: Uint8Array,
-    policyId: string,
-    solverCredentials: SolverCredentials,
+    intentObjectId: string,
     signer: Signer
   ): Promise<Uint8Array> {
     const protocolPackageId = INTENUS_PACKAGE_ID[this.config.network];
     const sessionKey = await this.getSessionKey(protocolPackageId, signer);
-    
-    const tx = this.createStrategyApprovalTx(policyId, solverCredentials);
+
+    const tx = this.createIntentApprovalTx(intentObjectId);
     const txBytes = await tx.build({ client: this.suiClient, onlyTransactionKind: true });
 
     return this.decrypt({
@@ -394,19 +299,17 @@ export class IntenusSealClient {
   }
 
   /**
-   * Decrypt history data for authorized user/router
+   * Decrypt solution data for authorized solver
    */
-  async decryptHistory(
+  async decryptSolution(
     encryptedData: Uint8Array,
-    policyId: string,
-    userAddress: string,
-    signer: Signer,
-    accessLevel?: number
+    solutionObjectId: string,
+    signer: Signer
   ): Promise<Uint8Array> {
     const protocolPackageId = INTENUS_PACKAGE_ID[this.config.network];
     const sessionKey = await this.getSessionKey(protocolPackageId, signer);
-    
-    const tx = this.createHistoryApprovalTx(policyId, userAddress, accessLevel);
+
+    const tx = this.createSolutionApprovalTx(solutionObjectId);
     const txBytes = await tx.build({ client: this.suiClient, onlyTransactionKind: true });
 
     return this.decrypt({
