@@ -233,7 +233,7 @@ export class SolutionBuilder {
       intent_id: this.intentId,
       solver_address: this.solverAddress,
       submitted_at: Date.now(),
-      transaction_bytes_ref: Buffer.from(ptbBytes).toString('base64'),
+      blob_id: Buffer.from(ptbBytes).toString('base64'),
     };
 
     return { submission, ptbBytes };

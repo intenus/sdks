@@ -52,7 +52,7 @@ export interface SolutionSubmission {
   /** Submission timestamp */
   submitted_at: number;
   /** PTB transaction bytes reference (fetched from on-chain when needed) */
-  transaction_bytes_ref?: string;
+  blob_id?: string;
 }
 
 /**

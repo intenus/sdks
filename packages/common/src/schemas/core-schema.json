@@ -25,7 +25,7 @@
           "type": "number",
           "description": "Submission timestamp (Unix ms)"
         },
-        "transaction_bytes_ref": {
+        "blob_id": {
           "type": "string",
           "description": "PTB transaction bytes reference"
         }
