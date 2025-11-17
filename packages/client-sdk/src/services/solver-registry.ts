@@ -85,6 +85,29 @@ export class SolverRegistryService {
   }
 
   /**
+   * Create transaction to increase stake for existing solver
+   * 
+   * @param additionalStake - Additional SUI coin object ID
+   * @returns Transaction for stake increase
+   */
+  createIncreaseStakeTransaction(additionalStake: string): Transaction {
+    const packageId = INTENUS_PACKAGE_ID[this.config.network];
+    const sharedObjects = SHARED_OBJECTS[this.config.network];
+    
+    const tx = new Transaction();
+    
+    tx.moveCall({
+      target: `${packageId}::${MODULES.SOLVER_REGISTRY}::increase_stake`,
+      arguments: [
+        tx.object(sharedObjects.solverRegistry),
+        tx.object(additionalStake)
+      ]
+    });
+
+    return tx;
+  }
+
+  /**
    * Increase stake for existing solver
    * 
    * @param additionalStake - Additional SUI coin object ID
@@ -96,18 +119,7 @@ export class SolverRegistryService {
     signer: Signer
   ): Promise<TransactionResult> {
     try {
-      const packageId = INTENUS_PACKAGE_ID[this.config.network];
-      const sharedObjects = SHARED_OBJECTS[this.config.network];
-      
-      const tx = new Transaction();
-      
-      tx.moveCall({
-        target: `${packageId}::${MODULES.SOLVER_REGISTRY}::increase_stake`,
-        arguments: [
-          tx.object(sharedObjects.solverRegistry),
-          tx.object(additionalStake)
-        ]
-      });
+      const tx = this.createIncreaseStakeTransaction(additionalStake);
 
       const result = await this.suiClient.signAndExecuteTransaction({
         transaction: tx,
@@ -135,6 +147,30 @@ export class SolverRegistryService {
   }
 
   /**
+   * Create transaction to initiate withdrawal process with cooldown
+   * 
+   * @param amount - Amount to withdraw in MIST
+   * @returns Transaction for withdrawal initiation
+   */
+  createInitiateWithdrawalTransaction(amount: string): Transaction {
+    const packageId = INTENUS_PACKAGE_ID[this.config.network];
+    const sharedObjects = SHARED_OBJECTS[this.config.network];
+    
+    const tx = new Transaction();
+    
+    tx.moveCall({
+      target: `${packageId}::${MODULES.SOLVER_REGISTRY}::initiate_withdrawal`,
+      arguments: [
+        tx.object(sharedObjects.solverRegistry),
+        tx.pure.u64(amount),
+        tx.object(sharedObjects.clock)
+      ]
+    });
+
+    return tx;
+  }
+
+  /**
    * Initiate withdrawal process with cooldown
    * 
    * @param amount - Amount to withdraw in MIST
@@ -146,19 +182,7 @@ export class SolverRegistryService {
     signer: Signer
   ): Promise<TransactionResult> {
     try {
-      const packageId = INTENUS_PACKAGE_ID[this.config.network];
-      const sharedObjects = SHARED_OBJECTS[this.config.network];
-      
-      const tx = new Transaction();
-      
-      tx.moveCall({
-        target: `${packageId}::${MODULES.SOLVER_REGISTRY}::initiate_withdrawal`,
-        arguments: [
-          tx.object(sharedObjects.solverRegistry),
-          tx.pure.u64(amount),
-          tx.object(sharedObjects.clock)
-        ]
-      });
+      const tx = this.createInitiateWithdrawalTransaction(amount);
 
       const result = await this.suiClient.signAndExecuteTransaction({
         transaction: tx,
@@ -184,6 +208,31 @@ export class SolverRegistryService {
   }
 
   /**
+   * Create transaction to complete withdrawal after cooldown period
+   * 
+   * @param amount - Amount to withdraw in MIST
+   * @returns Transaction for withdrawal completion
+   */
+  createCompleteWithdrawalTransaction(amount: string): Transaction {
+    const packageId = INTENUS_PACKAGE_ID[this.config.network];
+    const sharedObjects = SHARED_OBJECTS[this.config.network];
+    
+    const tx = new Transaction();
+    
+    tx.moveCall({
+      target: `${packageId}::${MODULES.SOLVER_REGISTRY}::complete_withdrawal`,
+      arguments: [
+        tx.object(sharedObjects.solverRegistry),
+        tx.object(sharedObjects.slashManager),
+        tx.pure.u64(amount),
+        tx.object(sharedObjects.clock)
+      ]
+    });
+
+    return tx;
+  }
+
+  /**
    * Complete withdrawal after cooldown period
    * 
    * @param amount - Amount to withdraw in MIST
@@ -195,20 +244,7 @@ export class SolverRegistryService {
     signer: Signer
   ): Promise<TransactionResult> {
     try {
-      const packageId = INTENUS_PACKAGE_ID[this.config.network];
-      const sharedObjects = SHARED_OBJECTS[this.config.network];
-      
-      const tx = new Transaction();
-      
-      tx.moveCall({
-        target: `${packageId}::${MODULES.SOLVER_REGISTRY}::complete_withdrawal`,
-        arguments: [
-          tx.object(sharedObjects.solverRegistry),
-          tx.object(sharedObjects.slashManager),
-          tx.pure.u64(amount),
-          tx.object(sharedObjects.clock)
-        ]
-      });
+      const tx = this.createCompleteWithdrawalTransaction(amount);
 
       const result = await this.suiClient.signAndExecuteTransaction({
         transaction: tx,

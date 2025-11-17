@@ -21,6 +21,44 @@ export class SlashManagerService {
   ) {}
 
   /**
+   * Create transaction to submit slash with TEE evidence.
+   * Creates a soulbound NFT slash record for the solver.
+   * 
+   * @param evidence - Slash evidence with TEE attestation
+   * @returns Transaction for slash submission
+   */
+  submitSlashTransaction(evidence: SlashEvidence): Transaction {
+    const packageId = INTENUS_PACKAGE_ID[this.config.network];
+    const sharedObjects = SHARED_OBJECTS[this.config.network];
+    
+    const tx = new Transaction();
+    
+    // Create SlashEvidence struct - this would need proper struct construction
+    // For now, pass individual fields as the Move function expects
+    tx.moveCall({
+      target: `${packageId}::${MODULES.SLASH_MANAGER}::submit_slash`,
+      arguments: [
+        tx.object(sharedObjects.slashManager),
+        tx.object(sharedObjects.teeVerifier),
+        // Pass SlashEvidence fields individually
+        tx.pure.u64(evidence.batch_id),
+        tx.pure.vector('u8', Array.from(new TextEncoder().encode(evidence.solution_id))),
+        tx.pure.address(evidence.solver_address),
+        tx.pure.u8(evidence.severity),
+        tx.pure.u8(evidence.reason_code),
+        tx.pure.vector('u8', Array.from(new TextEncoder().encode(evidence.reason_message))),
+        tx.pure.vector('u8', Array.from(new TextEncoder().encode(evidence.failure_context))),
+        tx.pure.vector('u8', Array.from(new TextEncoder().encode(evidence.attestation))),
+        tx.pure.u64(evidence.attestation_timestamp),
+        tx.pure.vector('u8', Array.from(new TextEncoder().encode(evidence.tee_measurement))),
+        tx.object(sharedObjects.clock)
+      ]
+    });
+
+    return tx;
+  }
+
+  /**
    * Submit slash with TEE evidence.
    * Creates a soulbound NFT slash record for the solver.
    * 
@@ -33,32 +71,7 @@ export class SlashManagerService {
     signer: Signer
   ): Promise<TransactionResult> {
     try {
-      const packageId = INTENUS_PACKAGE_ID[this.config.network];
-      const sharedObjects = SHARED_OBJECTS[this.config.network];
-      
-      const tx = new Transaction();
-      
-      // Create SlashEvidence struct - this would need proper struct construction
-      // For now, pass individual fields as the Move function expects
-      tx.moveCall({
-        target: `${packageId}::${MODULES.SLASH_MANAGER}::submit_slash`,
-        arguments: [
-          tx.object(sharedObjects.slashManager),
-          tx.object(sharedObjects.teeVerifier),
-          // Pass SlashEvidence fields individually
-          tx.pure.u64(evidence.batch_id),
-          tx.pure.vector('u8', Array.from(new TextEncoder().encode(evidence.solution_id))),
-          tx.pure.address(evidence.solver_address),
-          tx.pure.u8(evidence.severity),
-          tx.pure.u8(evidence.reason_code),
-          tx.pure.vector('u8', Array.from(new TextEncoder().encode(evidence.reason_message))),
-          tx.pure.vector('u8', Array.from(new TextEncoder().encode(evidence.failure_context))),
-          tx.pure.vector('u8', Array.from(new TextEncoder().encode(evidence.attestation))),
-          tx.pure.u64(evidence.attestation_timestamp),
-          tx.pure.vector('u8', Array.from(new TextEncoder().encode(evidence.tee_measurement))),
-          tx.object(sharedObjects.clock)
-        ]
-      });
+      const tx = this.submitSlashTransaction(evidence);
 
       const result = await this.suiClient.signAndExecuteTransaction({
         transaction: tx,
@@ -84,6 +97,38 @@ export class SlashManagerService {
   }
 
   /**
+   * Create transaction to file an appeal against a slash (within 24 hours).
+   * 
+   * @param slashRecordId - Slash record object ID
+   * @param appealReason - Reason for the appeal
+   * @param counterEvidence - Counter-evidence to dispute the slash
+   * @returns Transaction for appeal filing
+   */
+  fileAppealTransaction(
+    slashRecordId: string,
+    appealReason: string,
+    counterEvidence: string
+  ): Transaction {
+    const packageId = INTENUS_PACKAGE_ID[this.config.network];
+    const sharedObjects = SHARED_OBJECTS[this.config.network];
+    
+    const tx = new Transaction();
+    
+    tx.moveCall({
+      target: `${packageId}::${MODULES.SLASH_MANAGER}::file_appeal`,
+      arguments: [
+        tx.object(sharedObjects.slashManager),
+        tx.object(slashRecordId),
+        tx.pure.vector('u8', Array.from(new TextEncoder().encode(appealReason))),
+        tx.pure.vector('u8', Array.from(new TextEncoder().encode(counterEvidence))),
+        tx.object(sharedObjects.clock)
+      ]
+    });
+
+    return tx;
+  }
+
+  /**
    * File an appeal against a slash (within 24 hours).
    * 
    * @param slashRecordId - Slash record object ID
@@ -99,21 +144,7 @@ export class SlashManagerService {
     signer: Signer
   ): Promise<TransactionResult> {
     try {
-      const packageId = INTENUS_PACKAGE_ID[this.config.network];
-      const sharedObjects = SHARED_OBJECTS[this.config.network];
-      
-      const tx = new Transaction();
-      
-      tx.moveCall({
-        target: `${packageId}::${MODULES.SLASH_MANAGER}::file_appeal`,
-        arguments: [
-          tx.object(sharedObjects.slashManager),
-          tx.object(slashRecordId),
-          tx.pure.vector('u8', Array.from(new TextEncoder().encode(appealReason))),
-          tx.pure.vector('u8', Array.from(new TextEncoder().encode(counterEvidence))),
-          tx.object(sharedObjects.clock)
-        ]
-      });
+      const tx = this.fileAppealTransaction(slashRecordId, appealReason, counterEvidence);
 
       const result = await this.suiClient.signAndExecuteTransaction({
         transaction: tx,
@@ -139,6 +170,41 @@ export class SlashManagerService {
   }
 
   /**
+   * Create transaction to resolve an appeal (admin only).
+   * 
+   * @param slashRecordId - Slash record object ID
+   * @param appealId - Appeal object ID
+   * @param approved - Whether to approve or reject the appeal
+   * @param adminCap - Admin capability object ID
+   * @returns Transaction for appeal resolution
+   */
+  resolveAppealTransaction(
+    slashRecordId: string,
+    appealId: string,
+    approved: boolean,
+    adminCap: string
+  ): Transaction {
+    const packageId = INTENUS_PACKAGE_ID[this.config.network];
+    const sharedObjects = SHARED_OBJECTS[this.config.network];
+    
+    const tx = new Transaction();
+    
+    tx.moveCall({
+      target: `${packageId}::${MODULES.SLASH_MANAGER}::resolve_appeal`,
+      arguments: [
+        tx.object(adminCap),
+        tx.object(sharedObjects.slashManager),
+        tx.object(slashRecordId),
+        tx.object(appealId),
+        tx.pure.bool(approved),
+        tx.object(sharedObjects.clock)
+      ]
+    });
+
+    return tx;
+  }
+
+  /**
    * Resolve an appeal (admin only).
    * 
    * @param slashRecordId - Slash record object ID
@@ -156,22 +222,7 @@ export class SlashManagerService {
     signer: Signer
   ): Promise<TransactionResult> {
     try {
-      const packageId = INTENUS_PACKAGE_ID[this.config.network];
-      const sharedObjects = SHARED_OBJECTS[this.config.network];
-      
-      const tx = new Transaction();
-      
-      tx.moveCall({
-        target: `${packageId}::${MODULES.SLASH_MANAGER}::resolve_appeal`,
-        arguments: [
-          tx.object(adminCap),
-          tx.object(sharedObjects.slashManager),
-          tx.object(slashRecordId),
-          tx.object(appealId),
-          tx.pure.bool(approved),
-          tx.object(sharedObjects.clock)
-        ]
-      });
+      const tx = this.resolveAppealTransaction(slashRecordId, appealId, approved, adminCap);
 
       const result = await this.suiClient.signAndExecuteTransaction({
         transaction: tx,

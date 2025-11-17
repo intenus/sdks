@@ -51,6 +51,42 @@ export class RegistryService {
   ) {}
 
   /**
+   * Create transaction to submit a new intent with embedded policy parameters.
+   * The actual intent content (operation, constraints) is stored in Walrus.
+   *
+   * @param blobId - Walrus blob ID containing the IGS intent
+   * @param policy - Policy parameters for access control
+   * @returns Transaction for intent submission
+   */
+  submitIntentTransaction(
+    blobId: string,
+    policy: IntentPolicyParams
+  ): Transaction {
+    const packageId = INTENUS_PACKAGE_ID[this.config.network];
+    const sharedObjects = SHARED_OBJECTS[this.config.network];
+
+    const tx = new Transaction();
+
+    tx.moveCall({
+      target: `${packageId}::${MODULES.REGISTRY}::submit_intent`,
+      arguments: [
+        tx.pure.vector('u8', Array.from(new TextEncoder().encode(blobId))),
+        tx.pure.u64(policy.solver_access_start_ms),
+        tx.pure.u64(policy.solver_access_end_ms),
+        tx.pure.u64(policy.auto_revoke_ms),
+        tx.pure.bool(policy.requires_solver_registration),
+        tx.pure.u64(policy.min_solver_stake),
+        tx.pure.bool(policy.requires_attestation),
+        tx.pure.vector('u8', Array.from(policy.expected_measurement)),
+        tx.pure.vector('u8', Array.from(new TextEncoder().encode(policy.purpose))),
+        tx.object(sharedObjects.clock)
+      ]
+    });
+
+    return tx;
+  }
+
+  /**
    * Submit a new intent with embedded policy parameters.
    * The actual intent content (operation, constraints) is stored in Walrus.
    *
@@ -65,26 +101,7 @@ export class RegistryService {
     signer: Signer
   ): Promise<TransactionResult> {
     try {
-      const packageId = INTENUS_PACKAGE_ID[this.config.network];
-      const sharedObjects = SHARED_OBJECTS[this.config.network];
-
-      const tx = new Transaction();
-
-      tx.moveCall({
-        target: `${packageId}::${MODULES.REGISTRY}::submit_intent`,
-        arguments: [
-          tx.pure.vector('u8', Array.from(new TextEncoder().encode(blobId))),
-          tx.pure.u64(policy.solver_access_start_ms),
-          tx.pure.u64(policy.solver_access_end_ms),
-          tx.pure.u64(policy.auto_revoke_ms),
-          tx.pure.bool(policy.requires_solver_registration),
-          tx.pure.u64(policy.min_solver_stake),
-          tx.pure.bool(policy.requires_attestation),
-          tx.pure.vector('u8', Array.from(policy.expected_measurement)),
-          tx.pure.vector('u8', Array.from(new TextEncoder().encode(policy.purpose))),
-          tx.object(sharedObjects.clock)
-        ]
-      });
+      const tx = this.submitIntentTransaction(blobId, policy);
 
       const result = await this.suiClient.signAndExecuteTransaction({
         transaction: tx,
@@ -110,6 +127,36 @@ export class RegistryService {
   }
 
   /**
+   * Create transaction to submit a solution for an intent.
+   * The actual solution content (PTB, surplus calculation) is stored in Walrus.
+   *
+   * @param intentObjectId - Intent object ID
+   * @param blobId - Walrus blob ID containing the IGS solution
+   * @returns Transaction for solution submission
+   */
+  submitSolutionTransaction(
+    intentObjectId: string,
+    blobId: string
+  ): Transaction {
+    const packageId = INTENUS_PACKAGE_ID[this.config.network];
+    const sharedObjects = SHARED_OBJECTS[this.config.network];
+
+    const tx = new Transaction();
+
+    tx.moveCall({
+      target: `${packageId}::${MODULES.REGISTRY}::submit_solution`,
+      arguments: [
+        tx.object(intentObjectId),
+        tx.object(sharedObjects.solverRegistry),
+        tx.pure.vector('u8', Array.from(new TextEncoder().encode(blobId))),
+        tx.object(sharedObjects.clock)
+      ]
+    });
+
+    return tx;
+  }
+
+  /**
    * Submit a solution for an intent.
    * The actual solution content (PTB, surplus calculation) is stored in Walrus.
    *
@@ -124,20 +171,7 @@ export class RegistryService {
     signer: Signer
   ): Promise<TransactionResult> {
     try {
-      const packageId = INTENUS_PACKAGE_ID[this.config.network];
-      const sharedObjects = SHARED_OBJECTS[this.config.network];
-
-      const tx = new Transaction();
-
-      tx.moveCall({
-        target: `${packageId}::${MODULES.REGISTRY}::submit_solution`,
-        arguments: [
-          tx.object(intentObjectId),
-          tx.object(sharedObjects.solverRegistry),
-          tx.pure.vector('u8', Array.from(new TextEncoder().encode(blobId))),
-          tx.object(sharedObjects.clock)
-        ]
-      });
+      const tx = this.submitSolutionTransaction(intentObjectId, blobId);
 
       const result = await this.suiClient.signAndExecuteTransaction({
         transaction: tx,
@@ -160,6 +194,50 @@ export class RegistryService {
     } catch (error: any) {
       throw new Error(`Failed to submit solution: ${error.message}`);
     }
+  }
+
+  /**
+   * Create transaction to attest a solution with enclave signature.
+   * Called by enclave after validating the solution off-chain.
+   *
+   * @param solutionObjectId - Solution object ID
+   * @param intentObjectId - Intent object ID
+   * @param inputHash - Hash of input data (intent + constraints)
+   * @param outputHash - Hash of output data (solution + surplus)
+   * @param measurement - Enclave measurement (PCR values)
+   * @param signature - Signature from enclave
+   * @param timestampMs - Attestation timestamp
+   * @returns Transaction for solution attestation
+   */
+  attestSolutionTransaction(
+    solutionObjectId: string,
+    intentObjectId: string,
+    inputHash: Uint8Array,
+    outputHash: Uint8Array,
+    measurement: Uint8Array,
+    signature: Uint8Array,
+    timestampMs: number
+  ): Transaction {
+    const packageId = INTENUS_PACKAGE_ID[this.config.network];
+    const sharedObjects = SHARED_OBJECTS[this.config.network];
+
+    const tx = new Transaction();
+
+    tx.moveCall({
+      target: `${packageId}::${MODULES.REGISTRY}::attest_solution`,
+      arguments: [
+        tx.object(solutionObjectId),
+        tx.object(intentObjectId),
+        tx.pure.vector('u8', Array.from(inputHash)),
+        tx.pure.vector('u8', Array.from(outputHash)),
+        tx.pure.vector('u8', Array.from(measurement)),
+        tx.pure.vector('u8', Array.from(signature)),
+        tx.pure.u64(timestampMs),
+        tx.object(sharedObjects.clock)
+      ]
+    });
+
+    return tx;
   }
 
   /**
@@ -187,24 +265,15 @@ export class RegistryService {
     signer: Signer
   ): Promise<TransactionResult> {
     try {
-      const packageId = INTENUS_PACKAGE_ID[this.config.network];
-      const sharedObjects = SHARED_OBJECTS[this.config.network];
-
-      const tx = new Transaction();
-
-      tx.moveCall({
-        target: `${packageId}::${MODULES.REGISTRY}::attest_solution`,
-        arguments: [
-          tx.object(solutionObjectId),
-          tx.object(intentObjectId),
-          tx.pure.vector('u8', Array.from(inputHash)),
-          tx.pure.vector('u8', Array.from(outputHash)),
-          tx.pure.vector('u8', Array.from(measurement)),
-          tx.pure.vector('u8', Array.from(signature)),
-          tx.pure.u64(timestampMs),
-          tx.object(sharedObjects.clock)
-        ]
-      });
+      const tx = this.attestSolutionTransaction(
+        solutionObjectId,
+        intentObjectId,
+        inputHash,
+        outputHash,
+        measurement,
+        signature,
+        timestampMs
+      );
 
       const result = await this.suiClient.signAndExecuteTransaction({
         transaction: tx,
@@ -230,6 +299,35 @@ export class RegistryService {
   }
 
   /**
+   * Create transaction to select the best solution for an intent.
+   * User selects from attested solutions (typically ranked by AI off-chain).
+   *
+   * @param intentObjectId - Intent object ID
+   * @param solutionId - ID of the selected solution
+   * @returns Transaction for solution selection
+   */
+  selectBestSolutionTransaction(
+    intentObjectId: string,
+    solutionId: string
+  ): Transaction {
+    const packageId = INTENUS_PACKAGE_ID[this.config.network];
+    const sharedObjects = SHARED_OBJECTS[this.config.network];
+
+    const tx = new Transaction();
+
+    tx.moveCall({
+      target: `${packageId}::${MODULES.REGISTRY}::select_best_solution`,
+      arguments: [
+        tx.object(intentObjectId),
+        tx.pure.id(solutionId),
+        tx.object(sharedObjects.clock)
+      ]
+    });
+
+    return tx;
+  }
+
+  /**
    * Select the best solution for an intent.
    * User selects from attested solutions (typically ranked by AI off-chain).
    *
@@ -244,19 +342,7 @@ export class RegistryService {
     signer: Signer
   ): Promise<TransactionResult> {
     try {
-      const packageId = INTENUS_PACKAGE_ID[this.config.network];
-      const sharedObjects = SHARED_OBJECTS[this.config.network];
-
-      const tx = new Transaction();
-
-      tx.moveCall({
-        target: `${packageId}::${MODULES.REGISTRY}::select_best_solution`,
-        arguments: [
-          tx.object(intentObjectId),
-          tx.pure.id(solutionId),
-          tx.object(sharedObjects.clock)
-        ]
-      });
+      const tx = this.selectBestSolutionTransaction(intentObjectId, solutionId);
 
       const result = await this.suiClient.signAndExecuteTransaction({
         transaction: tx,
@@ -282,6 +368,35 @@ export class RegistryService {
   }
 
   /**
+   * Create transaction to execute the selected solution.
+   * User executes the best solution after selection.
+   *
+   * @param intentObjectId - Intent object ID
+   * @param solutionObjectId - Solution object ID
+   * @returns Transaction for solution execution
+   */
+  executeSolutionTransaction(
+    intentObjectId: string,
+    solutionObjectId: string
+  ): Transaction {
+    const packageId = INTENUS_PACKAGE_ID[this.config.network];
+    const sharedObjects = SHARED_OBJECTS[this.config.network];
+
+    const tx = new Transaction();
+
+    tx.moveCall({
+      target: `${packageId}::${MODULES.REGISTRY}::execute_solution`,
+      arguments: [
+        tx.object(intentObjectId),
+        tx.object(solutionObjectId),
+        tx.object(sharedObjects.clock)
+      ]
+    });
+
+    return tx;
+  }
+
+  /**
    * Execute the selected solution.
    * User executes the best solution after selection.
    *
@@ -296,19 +411,7 @@ export class RegistryService {
     signer: Signer
   ): Promise<TransactionResult> {
     try {
-      const packageId = INTENUS_PACKAGE_ID[this.config.network];
-      const sharedObjects = SHARED_OBJECTS[this.config.network];
-
-      const tx = new Transaction();
-
-      tx.moveCall({
-        target: `${packageId}::${MODULES.REGISTRY}::execute_solution`,
-        arguments: [
-          tx.object(intentObjectId),
-          tx.object(solutionObjectId),
-          tx.object(sharedObjects.clock)
-        ]
-      });
+      const tx = this.executeSolutionTransaction(intentObjectId, solutionObjectId);
 
       const result = await this.suiClient.signAndExecuteTransaction({
         transaction: tx,
@@ -334,6 +437,36 @@ export class RegistryService {
   }
 
   /**
+   * Create transaction to reject a solution with reason (for slashing mechanism).
+   * Called when attestation fails or solution violates constraints.
+   *
+   * @param solutionObjectId - Solution object ID
+   * @param reason - Rejection reason
+   * @returns Transaction for solution rejection
+   */
+  rejectSolutionTransaction(
+    solutionObjectId: string,
+    reason: string
+  ): Transaction {
+    const packageId = INTENUS_PACKAGE_ID[this.config.network];
+    const sharedObjects = SHARED_OBJECTS[this.config.network];
+
+    const tx = new Transaction();
+
+    tx.moveCall({
+      target: `${packageId}::${MODULES.REGISTRY}::reject_solution`,
+      arguments: [
+        tx.object(solutionObjectId),
+        tx.object(sharedObjects.solverRegistry),
+        tx.pure.vector('u8', Array.from(new TextEncoder().encode(reason))),
+        tx.object(sharedObjects.clock)
+      ]
+    });
+
+    return tx;
+  }
+
+  /**
    * Reject a solution with reason (for slashing mechanism).
    * Called when attestation fails or solution violates constraints.
    *
@@ -348,20 +481,7 @@ export class RegistryService {
     signer: Signer
   ): Promise<TransactionResult> {
     try {
-      const packageId = INTENUS_PACKAGE_ID[this.config.network];
-      const sharedObjects = SHARED_OBJECTS[this.config.network];
-
-      const tx = new Transaction();
-
-      tx.moveCall({
-        target: `${packageId}::${MODULES.REGISTRY}::reject_solution`,
-        arguments: [
-          tx.object(solutionObjectId),
-          tx.object(sharedObjects.solverRegistry),
-          tx.pure.vector('u8', Array.from(new TextEncoder().encode(reason))),
-          tx.object(sharedObjects.clock)
-        ]
-      });
+      const tx = this.rejectSolutionTransaction(solutionObjectId, reason);
 
       const result = await this.suiClient.signAndExecuteTransaction({
         transaction: tx,
@@ -387,6 +507,29 @@ export class RegistryService {
   }
 
   /**
+   * Create transaction to revoke an intent (only owner can revoke).
+   *
+   * @param intentObjectId - Intent object ID
+   * @returns Transaction for intent revocation
+   */
+  revokeIntentTransaction(intentObjectId: string): Transaction {
+    const packageId = INTENUS_PACKAGE_ID[this.config.network];
+    const sharedObjects = SHARED_OBJECTS[this.config.network];
+
+    const tx = new Transaction();
+
+    tx.moveCall({
+      target: `${packageId}::${MODULES.REGISTRY}::revoke_intent`,
+      arguments: [
+        tx.object(intentObjectId),
+        tx.object(sharedObjects.clock)
+      ]
+    });
+
+    return tx;
+  }
+
+  /**
    * Revoke an intent (only owner can revoke).
    *
    * @param intentObjectId - Intent object ID
@@ -398,18 +541,7 @@ export class RegistryService {
     signer: Signer
   ): Promise<TransactionResult> {
     try {
-      const packageId = INTENUS_PACKAGE_ID[this.config.network];
-      const sharedObjects = SHARED_OBJECTS[this.config.network];
-
-      const tx = new Transaction();
-
-      tx.moveCall({
-        target: `${packageId}::${MODULES.REGISTRY}::revoke_intent`,
-        arguments: [
-          tx.object(intentObjectId),
-          tx.object(sharedObjects.clock)
-        ]
-      });
+      const tx = this.revokeIntentTransaction(intentObjectId);
 
       const result = await this.suiClient.signAndExecuteTransaction({
         transaction: tx,
