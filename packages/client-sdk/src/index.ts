@@ -7,32 +7,30 @@ export { IntenusProtocolClient } from './client.js';
 // Services
 export {
   SolverRegistryService,
-  SealPolicyService,
-  SlashManagerService
+  SealPolicyCoordinatorService,
+  SlashManagerService,
+  RegistryService
 } from './services/index.js';
 
 // Types and interfaces
 export type {
   IntenusClientConfig,
   SolverProfile,
-  RankedTx,
-  BatchSummary,
   SlashEvidence,
   SlashRecord,
   Appeal,
-  IntentPolicyConfig,
-  StrategyPolicyConfig,
-  HistoryPolicyConfig,
   RegistryStats,
   TransactionResult
 } from './types.js';
 
+// Registry service types
+export type { IntentPolicyParams } from './services/registry.js';
+export { INTENT_STATUS, SOLUTION_STATUS } from './services/registry.js';
+
 export {
   SolverStatus,
-  BatchStatus,
   SlashSeverity,
   AppealStatus,
-  PolicyType,
   IntenusClientError
 } from './types.js';
 

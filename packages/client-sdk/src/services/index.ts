@@ -3,5 +3,6 @@
  */
 
 export { SolverRegistryService } from './solver-registry.js';
-export { SealPolicyService } from './seal-policy.js';
+export { SealPolicyCoordinatorService } from './seal-policy-coordinator.js';
 export { SlashManagerService } from './slash-manager.js';
+export { RegistryService } from './registry.js';

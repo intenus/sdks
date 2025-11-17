@@ -8,9 +8,9 @@ import { NETWORKS } from '@intenus/common';
 import { INTENUS_PACKAGE_ID } from './constants.js';
 import {
   SolverRegistryService,
-  SealPolicyService,
-  // BatchManagerService, // Removed - batch concept deprecated
-  SlashManagerService
+  SealPolicyCoordinatorService,
+  SlashManagerService,
+  RegistryService
 } from './services/index.js';
 import type { IntenusClientConfig, IntenusClientError } from './types.js';
 export class IntenusProtocolClient {
@@ -19,9 +19,9 @@ export class IntenusProtocolClient {
 
   // Service instances
   public readonly solvers: SolverRegistryService;
-  public readonly policies: SealPolicyService;
-  // public readonly batches: BatchManagerService; // Removed - batch concept deprecated
+  public readonly sealPolicy: SealPolicyCoordinatorService;
   public readonly slashing: SlashManagerService;
+  public readonly registry: RegistryService;
 
   constructor(config: IntenusClientConfig) {
     // Validate network
@@ -50,9 +50,9 @@ export class IntenusProtocolClient {
 
     // Initialize services
     this.solvers = new SolverRegistryService(this.suiClient, this.config);
-    this.policies = new SealPolicyService(this.suiClient, this.config);
-    // this.batches = new BatchManagerService(this.suiClient, this.config); // Removed - batch concept deprecated
+    this.sealPolicy = new SealPolicyCoordinatorService(this.suiClient, this.config);
     this.slashing = new SlashManagerService(this.suiClient, this.config);
+    this.registry = new RegistryService(this.suiClient, this.config);
   }
 
   /**
