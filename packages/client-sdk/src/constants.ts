@@ -19,21 +19,21 @@ export const SHARED_OBJECTS = {
     solverRegistry: '',
     slashManager: '',
     teeVerifier: '',
-    policyRegistry: '',
+    enclaveConfig: '',
     clock: '0x6'
   },
   testnet: {
     solverRegistry: '0xa5955d70c88f90a87b81a4c9493a9eb53ac1d7f392b60c528194c092f94d652e',
     slashManager: '0x6e561036e166f362ffe7b1defccae1bc120c0dead05de2ad75174fe1b5c5e330',
     teeVerifier: '0x9bf41dc9d81c0d2ac8c78a25eb60ecc12ab46b513304e0e9edb0e5ede8f310af',
-    policyRegistry: '0x95aa1b72ab27d6b16134bd6157f04808274e98d456038538a74eccb3ddf34517',
+    enclaveConfig: '', // Need to update after deployment
     clock: '0x6'
   },
   devnet: {
     solverRegistry: '',
     slashManager: '',
     teeVerifier: '',
-    policyRegistry: '',
+    enclaveConfig: '',
     clock: '0x6'
   }
 } as const;
@@ -72,7 +72,8 @@ export const MODULES = {
   SOLVER_REGISTRY: 'solver_registry',
   SLASH_MANAGER: 'slash_manager',
   TEE_VERIFIER: 'tee_verifier',
-  SEAL_POLICY_COORDINATOR: 'seal_policy_coordinator'
+  SEAL_POLICY_COORDINATOR: 'seal_policy_coordinator',
+  REGISTRY: 'registry'
 } as const;
 
 /**
