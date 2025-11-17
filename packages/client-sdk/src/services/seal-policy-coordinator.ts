@@ -68,6 +68,31 @@ export class SealPolicyCoordinatorService {
   }
 
   /**
+   * Create transaction to update enclave public key (admin only).
+   * The enclave public key is used to verify that calls come from the trusted enclave.
+   *
+   * @param newEnclavePk - New enclave public key (ed25519)
+   * @returns Transaction for enclave PK update
+   */
+  updateEnclavePkTransaction(newEnclavePk: Uint8Array): Transaction {
+    const packageId = INTENUS_PACKAGE_ID[this.config.network];
+    const sharedObjects = SHARED_OBJECTS[this.config.network];
+
+    const tx = new Transaction();
+
+    tx.moveCall({
+      target: `${packageId}::${MODULES.SEAL_POLICY_COORDINATOR}::update_enclave_pk`,
+      arguments: [
+        tx.object(sharedObjects.enclaveConfig),
+        tx.pure.vector('u8', Array.from(newEnclavePk)),
+        tx.object(sharedObjects.clock)
+      ]
+    });
+
+    return tx;
+  }
+
+  /**
    * Update enclave public key (admin only).
    * The enclave public key is used to verify that calls come from the trusted enclave.
    *
@@ -80,19 +105,7 @@ export class SealPolicyCoordinatorService {
     signer: Signer
   ): Promise<TransactionResult> {
     try {
-      const packageId = INTENUS_PACKAGE_ID[this.config.network];
-      const sharedObjects = SHARED_OBJECTS[this.config.network];
-
-      const tx = new Transaction();
-
-      tx.moveCall({
-        target: `${packageId}::${MODULES.SEAL_POLICY_COORDINATOR}::update_enclave_pk`,
-        arguments: [
-          tx.object(sharedObjects.enclaveConfig),
-          tx.pure.vector('u8', Array.from(newEnclavePk)),
-          tx.object(sharedObjects.clock)
-        ]
-      });
+      const tx = this.updateEnclavePkTransaction(newEnclavePk);
 
       const result = await this.suiClient.signAndExecuteTransaction({
         transaction: tx,
