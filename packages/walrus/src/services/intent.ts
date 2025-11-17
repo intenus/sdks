@@ -3,13 +3,17 @@
  * Simple blob storage for IGSIntent
  */
 
-import type { Signer } from '@mysten/sui/cryptography';
-import type { IntenusWalrusClient } from '../client.js';
-import type { StorageResult } from '../types/index.js';
-import { BaseStorageService } from './base.js';
-import type { Intent as IGSIntent } from '@intenus/common';
+import type { Signer } from "@mysten/sui/cryptography";
+import type { IntenusWalrusClient } from "../client.js";
+import type { StorageResult } from "../types/index.js";
+import { BaseStorageService, IStorageActions } from "./base.js";
+import type { IGSIntent } from "@intenus/common";
+import { WriteBlobFlow } from "@mysten/walrus";
 
-export class IntentStorageService extends BaseStorageService {
+export class IntentStorageService
+  extends BaseStorageService
+  implements IStorageActions<IGSIntent>
+{
   constructor(client: IntenusWalrusClient) {
     super(client);
   }
@@ -26,7 +30,7 @@ export class IntentStorageService extends BaseStorageService {
     epochs: number,
     signer: Signer
   ): Promise<StorageResult> {
-    const data = Buffer.from(JSON.stringify(intent), 'utf-8');
+    const data = Buffer.from(JSON.stringify(intent), "utf-8");
     const result = await this.client.walrusClient.writeBlob({
       blob: new Uint8Array(data),
       epochs,
@@ -42,6 +46,15 @@ export class IntentStorageService extends BaseStorageService {
     };
   }
 
+  async storeReturnFlow(data: IGSIntent): Promise<WriteBlobFlow> {
+    const flow = this.client.walrusClient.writeBlobFlow({
+      blob: new Uint8Array(Buffer.from(JSON.stringify(data), "utf-8")),
+    });
+
+    await flow.encode();
+
+    return flow;
+  }
   /**
    * Fetch IGSIntent by blob_id
    * @param blob_id Walrus blob ID
@@ -49,6 +62,6 @@ export class IntentStorageService extends BaseStorageService {
    */
   async fetch(blob_id: string): Promise<IGSIntent> {
     const data = await this.client.walrusClient.readBlob({ blobId: blob_id });
-    return JSON.parse(Buffer.from(data).toString('utf-8')) as IGSIntent;
+    return JSON.parse(Buffer.from(data).toString("utf-8")) as IGSIntent;
   }
 }

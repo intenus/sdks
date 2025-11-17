@@ -6,10 +6,11 @@
 import type { Signer } from '@mysten/sui/cryptography';
 import type { IntenusWalrusClient } from '../client.js';
 import type { StorageResult } from '../types/index.js';
-import { BaseStorageService } from './base.js';
+import { BaseStorageService, IStorageActions } from './base.js';
 import type { IGSSolution } from '@intenus/common';
+import { WriteBlobFlow } from '@mysten/walrus';
 
-export class SolutionStorageService extends BaseStorageService {
+export class SolutionStorageService extends BaseStorageService implements IStorageActions<IGSSolution> {
   constructor(client: IntenusWalrusClient) {
     super(client);
   }
@@ -40,6 +41,16 @@ export class SolutionStorageService extends BaseStorageService {
       created_at: Date.now(),
       epochs,
     };
+  }
+
+  async storeReturnFlow(solution: IGSSolution): Promise<WriteBlobFlow> {
+    const flow = this.client.walrusClient.writeBlobFlow({
+      blob: new Uint8Array(Buffer.from(JSON.stringify(solution), 'utf-8')),
+    });
+
+    await flow.encode();
+
+    return flow;
   }
 
   /**

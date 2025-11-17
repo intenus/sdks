@@ -5,26 +5,6 @@
 import { SuiClientOptions } from '@mysten/sui/client';
 import { WalrusClientConfig } from '@mysten/walrus';
 
-// Re-export ML dataset types from common
-export type { 
-  ClassificationFeedback,
-  IntentClassificationTrainingData,
-  ModelMetadata,
-  TrainingDatasetMetadata
-} from '@intenus/common';
-
-// Re-export IGS types (Intent is exported as alias for IGSIntent)
-export type {
-  Intent as IGSIntent,
-  IGSSolution
-} from '@intenus/common';
-
-// Re-export Walrus types
-export type { 
-  WalrusClientConfig,
-  WalrusOptions 
-} from '@mysten/walrus';
-
 export interface IntenusWalrusConfig {
   network: 'mainnet' | 'testnet';
   walrusConfig?: WalrusClientConfig;

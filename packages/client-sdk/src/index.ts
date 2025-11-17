@@ -48,32 +48,3 @@ export {
   DEFAULT_CONFIG
 } from './constants.js';
 export { TxExecutor } from './executor.js';
-export { WalrusIntentHelper } from './walrus-helper.js';
-
-// Re-export common types for convenience
-export type {
-  Intent,
-  SolutionSubmission,
-  IntentClassification,
-  PreRankingResult,
-  RankedSolution,
-  RankingResult
-} from '@intenus/common';
-
-// Re-export IGS types for storage (Walrus)
-export type {
-  IGSIntent,
-  IGSIntentType,
-  IGSObject,
-  IGSOperation,
-  IGSAssetFlow,
-  IGSAmount,
-  IGSExpectedOutcome,
-  IGSConstraints,
-  IGSPreferences,
-  IGSMetadata,
-  IGSSolution,
-  IGSRankedSolution,
-  IGSValidationResult,
-  IGSValidationError
-} from '@intenus/common';
