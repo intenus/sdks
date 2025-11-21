@@ -92,11 +92,6 @@ export class IntentBuilder {
         expected_costs: {
           gas_estimate: '0.01',
         },
-        benchmark: {
-          source: 'calculated',
-          timestamp: Date.now(),
-          confidence: 0.8,
-        },
       },
     };
 
