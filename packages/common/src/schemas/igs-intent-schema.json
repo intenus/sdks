@@ -286,18 +286,6 @@
           },
           "additionalProperties": false
         },
-        "benchmark": {
-          "type": "object",
-          "properties": {
-            "source": {
-              "type": "string",
-              "enum": ["dex_aggregator", "oracle", "manual", "calculated"]
-            },
-            "timestamp": { "type": "number", "minimum": 0 },
-            "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
-          },
-          "additionalProperties": false
-        },
         "market_price": {
           "type": "object",
           "properties": {

@@ -93,12 +93,6 @@ const IGSExpectedCostsSchema = z.object({
   slippage_estimate: z.string().regex(/^[0-9]+(\.[0-9]+)?$/).optional(),
 });
 
-const IGSBenchmarkSchema = z.object({
-  source: z.enum(['dex_aggregator', 'oracle', 'manual', 'calculated']).optional(),
-  timestamp: z.number().min(0).optional(),
-  confidence: z.number().min(0).max(1).optional(),
-});
-
 const IGSMarketPriceSchema = z.object({
   price: z.string().regex(/^[0-9]+(\.[0-9]+)?$/),
   price_asset: z.string(),
@@ -107,7 +101,6 @@ const IGSMarketPriceSchema = z.object({
 const IGSExpectedOutcomeSchema = z.object({
   expected_outputs: z.array(IGSExpectedOutputSchema).min(1),
   expected_costs: IGSExpectedCostsSchema.optional(),
-  benchmark: IGSBenchmarkSchema.optional(),
   market_price: IGSMarketPriceSchema.optional(),
 });
 
