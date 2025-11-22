@@ -19,8 +19,7 @@ export interface IntentPolicyParams {
   requires_solver_registration: boolean;
   min_solver_stake: string;
   requires_attestation: boolean;
-  expected_measurement: Uint8Array;
-  purpose: string;
+  min_solver_reputation_score: number;
 }
 
 /**
@@ -56,11 +55,13 @@ export class RegistryService {
    *
    * @param blobId - Walrus blob ID containing the IGS intent
    * @param policy - Policy parameters for access control
+   * @param fee - SUI coin object ID for intent fee (minimum MIN_INTENT_FEE)
    * @returns Transaction for intent submission
    */
   submitIntentTransaction(
     blobId: string,
-    policy: IntentPolicyParams
+    policy: IntentPolicyParams,
+    fee: string
   ): Transaction {
     const packageId = INTENUS_PACKAGE_ID[this.config.network];
     const sharedObjects = SHARED_OBJECTS[this.config.network];
@@ -70,15 +71,15 @@ export class RegistryService {
     tx.moveCall({
       target: `${packageId}::${MODULES.REGISTRY}::submit_intent`,
       arguments: [
-        tx.pure.vector('u8', Array.from(new TextEncoder().encode(blobId))),
+        tx.pure.string(blobId),
         tx.pure.u64(policy.solver_access_start_ms),
         tx.pure.u64(policy.solver_access_end_ms),
         tx.pure.u64(policy.auto_revoke_ms),
         tx.pure.bool(policy.requires_solver_registration),
         tx.pure.u64(policy.min_solver_stake),
         tx.pure.bool(policy.requires_attestation),
-        tx.pure.vector('u8', Array.from(policy.expected_measurement)),
-        tx.pure.vector('u8', Array.from(new TextEncoder().encode(policy.purpose))),
+        tx.pure.u64(policy.min_solver_reputation_score),
+        tx.object(fee),
         tx.object(sharedObjects.clock)
       ]
     });
@@ -92,16 +93,18 @@ export class RegistryService {
    *
    * @param blobId - Walrus blob ID containing the IGS intent
    * @param policy - Policy parameters for access control
+   * @param fee - SUI coin object ID for intent fee (minimum MIN_INTENT_FEE)
    * @param signer - User's keypair
    * @returns Transaction result with created Intent object
    */
   async submitIntent(
     blobId: string,
     policy: IntentPolicyParams,
+    fee: string,
     signer: Signer
   ): Promise<TransactionResult> {
     try {
-      const tx = this.submitIntentTransaction(blobId, policy);
+      const tx = this.submitIntentTransaction(blobId, policy, fee);
 
       const result = await this.suiClient.signAndExecuteTransaction({
         transaction: tx,
@@ -148,7 +151,7 @@ export class RegistryService {
       arguments: [
         tx.object(intentObjectId),
         tx.object(sharedObjects.solverRegistry),
-        tx.pure.vector('u8', Array.from(new TextEncoder().encode(blobId))),
+        tx.pure.string(blobId),
         tx.object(sharedObjects.clock)
       ]
     });
@@ -389,6 +392,7 @@ export class RegistryService {
       arguments: [
         tx.object(intentObjectId),
         tx.object(solutionObjectId),
+        tx.object(sharedObjects.treasury),
         tx.object(sharedObjects.clock)
       ]
     });
