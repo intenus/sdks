@@ -20,6 +20,7 @@ export const SHARED_OBJECTS = {
     slashManager: '',
     teeVerifier: '',
     enclaveConfig: '',
+    treasury: '',
     clock: '0x6'
   },
   testnet: {
@@ -27,6 +28,7 @@ export const SHARED_OBJECTS = {
     slashManager: '0x6e561036e166f362ffe7b1defccae1bc120c0dead05de2ad75174fe1b5c5e330',
     teeVerifier: '0x9bf41dc9d81c0d2ac8c78a25eb60ecc12ab46b513304e0e9edb0e5ede8f310af',
     enclaveConfig: '', // Need to update after deployment
+    treasury: '', // Need to update after deployment
     clock: '0x6'
   },
   devnet: {
@@ -34,6 +36,7 @@ export const SHARED_OBJECTS = {
     slashManager: '',
     teeVerifier: '',
     enclaveConfig: '',
+    treasury: '',
     clock: '0x6'
   }
 } as const;
@@ -74,6 +77,14 @@ export const MODULES = {
   TEE_VERIFIER: 'tee_verifier',
   SEAL_POLICY_COORDINATOR: 'seal_policy_coordinator',
   REGISTRY: 'registry'
+} as const;
+
+/**
+ * Registry constants
+ */
+export const REGISTRY_CONSTANTS = {
+  MIN_INTENT_FEE: '1000000', // 0.001 SUI minimum fee
+  PLATFORM_FEE_BPS: 1000, // 10% platform fee (in basis points)
 } as const;
 
 /**
@@ -118,11 +129,13 @@ export const ERROR_CODES = {
   E_NO_PENDING_WITHDRAWAL: 1012,
 
   // Seal Policy Coordinator (3xxx)
-  E_POLICY_EXISTS: 3001,
-  E_POLICY_NOT_FOUND: 3002,
-  E_INVALID_TIME_WINDOW: 3003,
-  E_UNAUTHORIZED: 3004,
-  E_POLICY_REVOKED: 3005,
+  E_INTENT_REVOKED: 3001,
+  E_SPC_UNAUTHORIZED: 3002,
+  E_OUTSIDE_TIME_WINDOW: 3003,
+  E_SPC_SOLVER_NOT_REGISTERED: 3004,
+  E_SPC_INSUFFICIENT_STAKE: 3005,
+  E_SPC_ATTESTATION_REQUIRED: 3006,
+  E_NO_ENCLAVE_PK: 3007,
 
   // TEE Verifier (4xxx)
   E_NOT_CONFIGURED: 4001,
@@ -131,12 +144,20 @@ export const ERROR_CODES = {
   E_STALE_TIMESTAMP: 4004,
   E_DUPLICATE_RECORD: 4005,
 
-  // Batch Manager (5xxx)
-  E_BATCH_EXISTS: 5002,
-  E_BATCH_NOT_FOUND: 5003,
-  E_INVALID_BATCH_STATUS: 5004,
+  // Registry (6xxx)
+  E_INVALID_BLOB_ID: 6001,
+  E_UNAUTHORIZED_SOLVER: 6002,
+  E_POLICY_VALIDATION_FAILED: 6003,
+  E_REG_INTENT_REVOKED: 6004,
+  E_REG_UNAUTHORIZED: 6005,
+  E_INVALID_TIME_WINDOW: 6006,
+  E_SOLUTION_ALREADY_SELECTED: 6007,
+  E_INVALID_STATUS_TRANSITION: 6008,
+  E_REG_ATTESTATION_REQUIRED: 6009,
+  E_INSUFFICIENT_FEE: 6010,
+  E_NO_FEE_TO_REFUND: 6011,
 
-  // Slash Manager (6xxx)
+  // Slash Manager (6xxx) - Note: contracts use same range as registry
   E_SLASH_UNAUTHORIZED: 6001,
   E_INVALID_SEVERITY: 6003,
   E_APPEAL_ALREADY_FILED: 6004,
