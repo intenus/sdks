@@ -41,10 +41,6 @@
           "enum": ["swap", "limit_order", "complex_defi", "arbitrage", "other"],
           "description": "Primary intent category detected"
         },
-        "sub_category": {
-          "type": "string",
-          "description": "Sub-category for fine-grained classification"
-        },
         "detected_priority": {
           "type": "string",
           "enum": ["speed", "cost", "output", "balanced"],
@@ -65,26 +61,6 @@
           "minimum": 0,
           "maximum": 1,
           "description": "Confidence in classification (0-1)"
-        },
-        "metadata": {
-          "type": "object",
-          "required": ["method"],
-          "properties": {
-            "method": {
-              "type": "string",
-              "enum": ["rule_based", "ml_model", "hybrid"],
-              "description": "Classification method used"
-            },
-            "model_version": {
-              "type": "string",
-              "description": "Model version (if ML used)"
-            },
-            "features_used": {
-              "type": "array",
-              "items": { "type": "string" },
-              "description": "Features used in classification"
-            }
-          }
         }
       }
     },
@@ -132,7 +108,6 @@
                   "surplus_percentage": { "type": "number" },
                   "gas_cost": { "type": "number" },
                   "protocol_fees": { "type": "number" },
-                  "total_cost": { "type": "number" },
                   "total_hops": { "type": "number" },
                   "protocols_count": { "type": "number" },
                   "estimated_execution_time": { "type": "number" },
