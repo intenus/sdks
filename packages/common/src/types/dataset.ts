@@ -96,7 +96,6 @@ export interface GroundTruthLabel {
   /** Primary category */
   primary_category: 'swap' | 'limit_order' | 'complex_defi' | 'arbitrage' | 'other';
   /** Fine-grained sub-category */
-  sub_category: string;
   /** Detected user priority */
   detected_priority: 'speed' | 'cost' | 'output' | 'balanced';
   /** Intent complexity level */

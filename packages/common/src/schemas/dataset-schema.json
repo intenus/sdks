@@ -20,7 +20,6 @@
         "gas_cost_weight",
         "execution_speed_weight",
         "reputation_weight",
-        "auto_execute",
         "require_simulation",
         "input_count",
         "output_count",
@@ -57,7 +56,6 @@
         "gas_cost_weight": { "type": "number", "minimum": 0, "maximum": 100 },
         "execution_speed_weight": { "type": "number", "minimum": 0, "maximum": 100 },
         "reputation_weight": { "type": "number", "minimum": 0, "maximum": 100 },
-        "auto_execute": { "type": "boolean" },
         "require_simulation": { "type": "boolean" },
         "input_count": { "type": "number" },
         "output_count": { "type": "number" },
@@ -90,13 +88,12 @@
     "GroundTruthLabel": {
       "type": "object",
       "description": "Ground truth classification labels",
-      "required": ["primary_category", "sub_category", "detected_priority", "complexity_level", "risk_level"],
+      "required": ["primary_category", "detected_priority", "complexity_level", "risk_level"],
       "properties": {
         "primary_category": {
           "type": "string",
           "enum": ["swap", "limit_order", "complex_defi", "arbitrage", "other"]
         },
-        "sub_category": { "type": "string" },
         "detected_priority": {
           "type": "string",
           "enum": ["speed", "cost", "output", "balanced"]
@@ -173,183 +170,6 @@
         "dataset_version": { "type": "string" },
         "created_at": { "type": "number" },
         "full_intent_ref": { "type": "string" }
-      }
-    },
-    "ClassificationFeedback": {
-      "type": "object",
-      "description": "Feedback for continuous learning",
-      "required": ["feedback_id", "intent_id", "predicted_classification", "actual_outcome", "feedback_source", "created_at"],
-      "properties": {
-        "feedback_id": { "type": "string" },
-        "intent_id": { "type": "string" },
-        "predicted_classification": {
-          "type": "object",
-          "required": ["primary_category", "detected_priority", "complexity_level", "risk_level", "confidence", "model_version"],
-          "properties": {
-            "primary_category": { "type": "string" },
-            "sub_category": { "type": "string" },
-            "detected_priority": { "type": "string" },
-            "complexity_level": { "type": "string" },
-            "risk_level": { "type": "string" },
-            "confidence": { "type": "number" },
-            "model_version": { "type": "string" }
-          }
-        },
-        "actual_outcome": { "$ref": "#/definitions/ExecutionOutcome" },
-        "best_strategy": { "type": "string" },
-        "corrected_classification": { "$ref": "#/definitions/GroundTruthLabel" },
-        "feedback_source": {
-          "type": "string",
-          "enum": ["execution_outcome", "user_explicit", "expert_review"]
-        },
-        "created_at": { "type": "number" }
-      }
-    },
-    "TrainingDatasetMetadata": {
-      "type": "object",
-      "description": "Training dataset composition and metadata",
-      "required": ["dataset_id", "version", "composition", "freshness", "quality", "class_distribution", "created_at", "updated_at"],
-      "properties": {
-        "dataset_id": { "type": "string" },
-        "version": { "type": "string" },
-        "composition": {
-          "type": "object",
-          "required": ["synthetic_samples", "production_samples", "expert_samples", "total_samples"],
-          "properties": {
-            "synthetic_samples": { "type": "number" },
-            "production_samples": { "type": "number" },
-            "expert_samples": { "type": "number" },
-            "total_samples": { "type": "number" }
-          }
-        },
-        "freshness": {
-          "type": "object",
-          "required": ["samples_last_7_days", "samples_last_30_days", "samples_last_90_days"],
-          "properties": {
-            "samples_last_7_days": { "type": "number" },
-            "samples_last_30_days": { "type": "number" },
-            "samples_last_90_days": { "type": "number" }
-          }
-        },
-        "quality": {
-          "type": "object",
-          "required": ["high_confidence", "medium_confidence", "low_confidence"],
-          "properties": {
-            "high_confidence": { "type": "number" },
-            "medium_confidence": { "type": "number" },
-            "low_confidence": { "type": "number" }
-          }
-        },
-        "class_distribution": {
-          "type": "object",
-          "required": ["swap", "limit_order", "complex_defi", "arbitrage", "other"],
-          "properties": {
-            "swap": { "type": "number" },
-            "limit_order": { "type": "number" },
-            "complex_defi": { "type": "number" },
-            "arbitrage": { "type": "number" },
-            "other": { "type": "number" }
-          }
-        },
-        "created_at": { "type": "number" },
-        "updated_at": { "type": "number" },
-        "walrus_blob_id": { "type": "string" }
-      }
-    },
-    "ModelMetadata": {
-      "type": "object",
-      "description": "ML model metadata",
-      "required": ["model_id", "model_version", "architecture", "training", "metrics", "feature_importance", "artifacts", "status"],
-      "properties": {
-        "model_id": { "type": "string" },
-        "model_version": { "type": "string" },
-        "architecture": {
-          "type": "object",
-          "required": ["type", "hyperparameters"],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": ["random_forest", "xgboost", "neural_network", "ensemble"]
-            },
-            "hyperparameters": { "type": "object" }
-          }
-        },
-        "training": {
-          "type": "object",
-          "required": ["dataset_version", "training_samples", "validation_samples", "test_samples", "trained_at", "training_duration_ms"],
-          "properties": {
-            "dataset_version": { "type": "string" },
-            "training_samples": { "type": "number" },
-            "validation_samples": { "type": "number" },
-            "test_samples": { "type": "number" },
-            "trained_at": { "type": "number" },
-            "training_duration_ms": { "type": "number" }
-          }
-        },
-        "metrics": {
-          "type": "object",
-          "required": ["accuracy", "precision", "recall", "f1_score", "per_class_metrics"],
-          "properties": {
-            "accuracy": { "type": "number" },
-            "precision": { "type": "number" },
-            "recall": { "type": "number" },
-            "f1_score": { "type": "number" },
-            "per_class_metrics": {
-              "type": "object",
-              "additionalProperties": {
-                "type": "object",
-                "required": ["precision", "recall", "f1", "support"],
-                "properties": {
-                  "precision": { "type": "number" },
-                  "recall": { "type": "number" },
-                  "f1": { "type": "number" },
-                  "support": { "type": "number" }
-                }
-              }
-            }
-          }
-        },
-        "feature_importance": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["feature_name", "importance", "rank"],
-            "properties": {
-              "feature_name": { "type": "string" },
-              "importance": { "type": "number" },
-              "rank": { "type": "number" }
-            }
-          }
-        },
-        "artifacts": {
-          "type": "object",
-          "required": ["model_weights_ref", "scaler_ref", "encoder_ref"],
-          "properties": {
-            "model_weights_ref": { "type": "string" },
-            "scaler_ref": { "type": "string" },
-            "encoder_ref": { "type": "string" }
-          }
-        },
-        "status": {
-          "type": "string",
-          "enum": ["training", "testing", "deployed", "deprecated"]
-        },
-        "deployed_at": { "type": "number" },
-        "deprecated_at": { "type": "number" }
-      }
-    },
-    "ClassificationInference": {
-      "type": "object",
-      "description": "Model inference result (production usage)",
-      "required": ["intent_id", "model_version", "prediction", "confidence", "features", "inferred_at", "latency_ms"],
-      "properties": {
-        "intent_id": { "type": "string" },
-        "model_version": { "type": "string" },
-        "prediction": { "$ref": "#/definitions/GroundTruthLabel" },
-        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
-        "features": { "$ref": "#/definitions/RawFeatures" },
-        "inferred_at": { "type": "number" },
-        "latency_ms": { "type": "number" }
       }
     }
   }
