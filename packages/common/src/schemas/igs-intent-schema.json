@@ -414,10 +414,30 @@
         "ranking_weights": {
           "type": "object",
           "properties": {
-            "surplus_weight": { "type": "number", "minimum": 0, "maximum": 100, "default": 60 },
-            "gas_cost_weight": { "type": "number", "minimum": 0, "maximum": 100, "default": 20 },
-            "execution_speed_weight": { "type": "number", "minimum": 0, "maximum": 100, "default": 10 },
-            "reputation_weight": { "type": "number", "minimum": 0, "maximum": 100, "default": 10 }
+            "surplus_weight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "default": 60
+            },
+            "gas_cost_weight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "default": 20
+            },
+            "execution_speed_weight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "default": 10
+            },
+            "reputation_weight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "default": 10
+            }
           },
           "additionalProperties": false
         },

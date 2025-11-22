@@ -7,7 +7,12 @@
     "SolutionSubmission": {
       "type": "object",
       "description": "Solution submitted by solver (on-chain reference)",
-      "required": ["solution_id", "intent_id", "solver_address", "submitted_at"],
+      "required": [
+        "solution_id",
+        "intent_id",
+        "solver_address",
+        "submitted_at"
+      ],
       "properties": {
         "solution_id": {
           "type": "string",
@@ -34,7 +39,15 @@
     "IntentClassification": {
       "type": "object",
       "description": "Intent classification result from ML or rule-based classifier",
-      "required": ["primary_category", "detected_priority", "complexity_level", "risk_level", "confidence", "metadata"],
+      "required": [
+        "primary_category",
+        "detected_priority",
+        "complexity_level",
+        "risk_level",
+        "confidence",
+        "strategy",
+        "weights"
+      ],
       "properties": {
         "primary_category": {
           "type": "string",
@@ -61,13 +74,47 @@
           "minimum": 0,
           "maximum": 1,
           "description": "Confidence in classification (0-1)"
+        },
+        "strategy": {
+          "type": "string",
+          "description": "Strategy used for classification"
+        },
+        "weights": {
+          "type": "object",
+          "required": [
+            "gt_surplus_usd",
+            "gt_surplus_percentage",
+            "gt_gas_cost",
+            "gt_protocol_fees",
+            "gt_total_cost",
+            "gt_total_hops",
+            "gt_protocols_count"
+          ],
+          "properties": {
+            "gt_surplus_usd": { "type": "number" },
+            "gt_surplus_percentage": { "type": "number" },
+            "gt_gas_cost": { "type": "number" },
+            "gt_protocol_fees": { "type": "number" },
+            "gt_total_cost": { "type": "number" },
+            "gt_total_hops": { "type": "number" },
+            "gt_protocols_count": { "type": "number" }
+          }
         }
       }
     },
     "PreRankingResult": {
       "type": "object",
       "description": "PreRanking engine result - validation, classification, and feature extraction",
-      "required": ["intent_id", "intent_classification", "passed_solution_ids", "failed_solution_ids", "feature_vectors", "dry_run_results", "stats", "processed_at"],
+      "required": [
+        "intent_id",
+        "intent_classification",
+        "passed_solution_ids",
+        "failed_solution_ids",
+        "feature_vectors",
+        "dry_run_results",
+        "stats",
+        "processed_at"
+      ],
       "properties": {
         "intent_id": {
           "type": "string",
@@ -102,7 +149,15 @@
               "solution_id": { "type": "string" },
               "features": {
                 "type": "object",
-                "required": ["surplus_usd", "surplus_percentage", "gas_cost", "protocol_fees", "total_cost", "total_hops", "protocols_count"],
+                "required": [
+                  "surplus_usd",
+                  "surplus_percentage",
+                  "gas_cost",
+                  "protocol_fees",
+                  "total_cost",
+                  "total_hops",
+                  "protocols_count"
+                ],
                 "properties": {
                   "surplus_usd": { "type": "number" },
                   "surplus_percentage": { "type": "number" },
@@ -131,7 +186,13 @@
         },
         "stats": {
           "type": "object",
-          "required": ["total_submitted", "passed", "failed", "dry_run_executed", "dry_run_successful"],
+          "required": [
+            "total_submitted",
+            "passed",
+            "failed",
+            "dry_run_executed",
+            "dry_run_successful"
+          ],
           "properties": {
             "total_submitted": { "type": "number" },
             "passed": { "type": "number" },
@@ -149,7 +210,18 @@
     "RankedSolution": {
       "type": "object",
       "description": "Ranked solution with scoring and explanation",
-      "required": ["rank", "score", "solution_id", "solver_address", "score_breakdown", "reasoning", "personalization_applied", "warnings", "expires_at"],
+      "required": [
+        "rank",
+        "score",
+        "solution_id",
+        "solver_address",
+        "transaction_bytes",
+        "score_breakdown",
+        "reasoning",
+        "personalization_applied",
+        "warnings",
+        "expires_at"
+      ],
       "properties": {
         "rank": {
           "type": "number",
@@ -172,7 +244,12 @@
         },
         "score_breakdown": {
           "type": "object",
-          "required": ["surplus_score", "cost_score", "speed_score", "reputation_score"],
+          "required": [
+            "surplus_score",
+            "cost_score",
+            "speed_score",
+            "reputation_score"
+          ],
           "properties": {
             "surplus_score": { "type": "number" },
             "cost_score": { "type": "number" },
@@ -182,7 +259,12 @@
         },
         "reasoning": {
           "type": "object",
-          "required": ["primary_reason", "secondary_reasons", "risk_assessment", "confidence_level"],
+          "required": [
+            "primary_reason",
+            "secondary_reasons",
+            "risk_assessment",
+            "confidence_level"
+          ],
           "properties": {
             "primary_reason": { "type": "string" },
             "secondary_reasons": {
@@ -219,7 +301,14 @@
     "RankingResult": {
       "type": "object",
       "description": "Ranking engine final result",
-      "required": ["intent_id", "ranked_solutions", "best_solution", "metadata", "ranked_at", "expires_at"],
+      "required": [
+        "intent_id",
+        "ranked_solutions",
+        "best_solution",
+        "metadata",
+        "ranked_at",
+        "expires_at"
+      ],
       "properties": {
         "intent_id": {
           "type": "string"
@@ -233,12 +322,16 @@
         },
         "metadata": {
           "type": "object",
-          "required": ["total_solutions", "average_score", "strategy", "strategy_version", "intent_category"],
+          "required": [
+            "total_solutions",
+            "average_score",
+            "strategy",
+            "intent_category"
+          ],
           "properties": {
             "total_solutions": { "type": "number" },
             "average_score": { "type": "number" },
             "strategy": { "type": "string" },
-            "strategy_version": { "type": "string" },
             "intent_category": { "type": "string" }
           }
         },

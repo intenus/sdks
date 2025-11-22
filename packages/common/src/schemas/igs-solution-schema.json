@@ -15,7 +15,7 @@
       "type": "string",
       "minLength": 1,
       "description": "Serialized Tx bytes (base64 or hex encoded string)"
-        }
-      },
-      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
 }
