@@ -1,6 +1,6 @@
 {
   "name": "@intenus/walrus",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "description": "Walrus storage wrapper for Intenus Protocol (AI infra standard)",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -46,7 +46,7 @@
   },
   "keywords": [
     "walrus",
-    "storage", 
+    "storage",
     "intenus",
     "defi",
     "sui",
