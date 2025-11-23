@@ -105,8 +105,7 @@
                 "requires_solver_registration",
                 "min_solver_stake",
                 "requires_tee_attestation",
-                "expected_measurement",
-                "purpose"
+                "min_solver_reputation_score"
               ],
               "properties": {
                 "requires_solver_registration": {
@@ -119,13 +118,10 @@
                 "requires_tee_attestation": {
                   "type": "boolean"
                 },
-                "expected_measurement": {
-                  "type": "string",
-                  "description": "TEE measurement hash"
-                },
-                "purpose": {
-                  "type": "string",
-                  "maxLength": 200
+                "min_solver_reputation_score": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
                 }
               },
               "additionalProperties": false
