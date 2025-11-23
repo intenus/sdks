@@ -4,7 +4,6 @@
  */
 
 import { SuiClient } from '@mysten/sui/client';
-import { NETWORKS } from '@intenus/common';
 import { INTENUS_PACKAGE_ID } from './constants.js';
 import {
   SolverRegistryService,
@@ -13,6 +12,7 @@ import {
   RegistryService
 } from './services/index.js';
 import type { IntenusClientConfig, IntenusClientError } from './types.js';
+import { NETWORKS } from '@intenus/common';
 export class IntenusProtocolClient {
   public readonly suiClient: SuiClient;
   private config: IntenusClientConfig;

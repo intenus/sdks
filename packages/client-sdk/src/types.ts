@@ -144,52 +144,6 @@ export enum AppealStatus {
 }
 
 /**
- * Policy configuration for intent encryption
- */
-export interface IntentPolicyConfig {
-  policy_id: string;
-  batch_id: number;
-  solver_access_start_ms: number;
-  solver_access_end_ms: number;
-  router_access_enabled: boolean;
-  auto_revoke_time: number;
-  requires_solver_registration: boolean;
-  min_solver_stake: string;
-  requires_tee_attestation: boolean;
-  expected_measurement: string;
-  purpose: string;
-}
-
-/**
- * Policy configuration for strategy encryption
- */
-export interface StrategyPolicyConfig {
-  policy_id: string;
-  router_can_access: boolean;
-  admin_unlock_time: number;
-  is_public: boolean;
-  requires_solver_registration: boolean;
-  min_solver_stake: string;
-  requires_tee_attestation: boolean;
-  expected_measurement: string;
-  purpose: string;
-}
-
-/**
- * Policy configuration for user history encryption
- */
-export interface HistoryPolicyConfig {
-  policy_id: string;
-  router_access_level: number;
-  user_can_revoke: boolean;
-  requires_solver_registration: boolean;
-  min_solver_stake: string;
-  requires_tee_attestation: boolean;
-  expected_measurement: string;
-  purpose: string;
-}
-
-/**
  * Policy types
  */
 export enum PolicyType {
