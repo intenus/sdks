@@ -17,27 +17,24 @@ import { toHex } from '@mysten/sui/utils';
  *
  * @param client - Initialized Seal client
  * @param intentData - Intent data object (will be JSON serialized)
- * @param batchId - Batch identifier for grouping
+ * @param context - Context identifier for policy ID generation (e.g., batch ID, user address)
  * @param options - Optional encryption config overrides
  * @returns Encryption result with policy metadata
  */
 export async function encryptIntentData(
   client: IntenusSealClient,
   intentData: any,
-  batchId: string,
+  context: string,
   options?: Partial<IntentEncryptionConfig>
 ): Promise<EncryptionResult> {
   const protocolPackageId = client.getPackageId();
-  const policyId = options?.policyId || generatePolicyId('intent', batchId);
+  const policyId = options?.policyId || generatePolicyId('intent', context);
 
   const config: IntentEncryptionConfig = {
     packageId: protocolPackageId,
     policyId,
     threshold: options?.threshold || client.getConfig().defaultThreshold || 2,
-    batchId,
-    solverWindow: options?.solverWindow || 5000,
-    routerAccess: options?.routerAccess ?? true,
-    autoRevokeTime: options?.autoRevokeTime,
+    context,
     ttlMin: options?.ttlMin || 10
   };
 

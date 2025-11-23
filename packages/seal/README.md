@@ -39,8 +39,7 @@ const intentData = {
 const encrypted = await encryptIntentData(
   client,
   intentData,
-  'batch_123',
-  keypair
+  'user_context_123'  // Context for policy ID generation
 );
 
 // Decrypt with intent object ID
@@ -48,7 +47,7 @@ const decrypted = await decryptIntentData(
   client,
   encrypted.encryptedData,
   intentObjectId,
-  keypair
+  solverKeypair
 );
 ```
 
@@ -61,12 +60,9 @@ const decrypted = await decryptIntentData(
 const result = await encryptIntentData(
   client,
   intentData,
-  batchId,
-  signer,
+  'context_123',  // Context for policy ID generation
   {
-    threshold: 2,
-    solverWindow: 5000,
-    routerAccess: true
+    threshold: 2
   }
 );
 
@@ -75,15 +71,14 @@ const decrypted = await decryptIntentData(
   client,
   encryptedData,
   intentObjectId,
-  signer
+  solverKeypair
 );
 
 // Encrypt solution
 const solutionResult = await encryptSolutionData(
   client,
   solutionData,
-  solverId,
-  signer,
+  'solver_123',  // Solver context
   {
     threshold: 2,
     isPublic: false
@@ -95,7 +90,7 @@ const decryptedSolution = await decryptSolutionData(
   client,
   encryptedData,
   solutionObjectId,
-  signer
+  authorizedKeypair
 );
 ```
 
@@ -107,10 +102,8 @@ const intentResult = await client.encryptIntent(data, {
   packageId: protocolPackageId,
   policyId: 'policy_123',
   threshold: 2,
-  batchId: 'batch_456',
-  solverWindow: 5000,
-  routerAccess: true
-}, signer);
+  context: 'user_batch_456'  // Optional context
+});
 
 // Encrypt solution
 const solutionResult = await client.encryptSolution(data, {
@@ -118,20 +111,20 @@ const solutionResult = await client.encryptSolution(data, {
   policyId: 'policy_789',
   threshold: 2,
   isPublic: false
-}, signer);
+});
 
 // Decrypt intent (requires Intent object ID from chain)
 const decryptedIntent = await client.decryptIntent(
   encryptedData,
   intentObjectId,
-  signer
+  solverKeypair
 );
 
 // Decrypt solution (requires Solution object ID from chain)
 const decryptedSolution = await client.decryptSolution(
   encryptedData,
   solutionObjectId,
-  signer
+  authorizedKeypair
 );
 ```
 

@@ -38,13 +38,13 @@ export interface SealPolicyConfig {
 }
 
 /**
- * Intent encryption config with batch and time window settings
+ * Intent encryption config
+ * Only includes fields needed for Seal encryption.
+ * Policy enforcement (access control, time windows) is handled by the Intent contract.
  */
 export interface IntentEncryptionConfig extends SealPolicyConfig {
-  batchId: string;
-  solverWindow: number;
-  routerAccess: boolean;
-  autoRevokeTime?: number;
+  // Optional context for policy ID generation
+  context?: string;
 }
 
 /**

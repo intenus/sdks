@@ -37,16 +37,13 @@ const intentData = {
   slippage: 0.01
 };
 
-const batchId = 'batch_123';
+const context = 'user_batch_123';
 const encrypted = await encryptIntentData(
   client,
   intentData,
-  batchId,
-  keypair,
+  context,  // Context for policy ID generation
   {
-    threshold: 2,
-    solverWindow: 5000,
-    routerAccess: true
+    threshold: 2
   }
 );
 
@@ -64,7 +61,7 @@ const decrypted = await decryptIntentData(
   client,
   encrypted.encryptedData,
   intentObjectId,
-  keypair
+  solverKeypair  // Solver's keypair
 );
 
 console.log('Intent:', decrypted);
@@ -84,8 +81,7 @@ const solutionData = {
 const encrypted = await encryptSolutionData(
   client,
   solutionData,
-  'solver_001',
-  keypair,
+  'solver_001',  // Solver context
   {
     threshold: 2,
     isPublic: false
@@ -103,7 +99,7 @@ const decrypted = await decryptSolutionData(
   client,
   encrypted.encryptedData,
   solutionObjectId,
-  keypair
+  authorizedKeypair  // Authorized keypair
 );
 ```
 
@@ -148,15 +144,13 @@ const result = await client.encryptIntent(data, {
   packageId: protocolPackageId,
   policyId: 'policy_123',
   threshold: 2,
-  batchId: 'batch_456',
-  solverWindow: 5000,
-  routerAccess: true
-}, signer);
+  context: 'user_batch_456'  // Optional context
+});
 
 const decryptedBytes = await client.decryptIntent(
   result.encryptedData,
   intentObjectId,
-  signer
+  solverKeypair
 );
 
 const parsed = parseDecryptedData(decryptedBytes, 'json');
@@ -168,7 +162,7 @@ const parsed = parseDecryptedData(decryptedBytes, 'json');
 import { IntenusSealError, ERROR_CODES } from '@intenus/seal';
 
 try {
-  const result = await encryptIntentData(client, data, batchId, signer);
+  const result = await encryptIntentData(client, data, 'context_123');
 } catch (error) {
   if (error instanceof IntenusSealError) {
     switch (error.code) {
@@ -196,8 +190,7 @@ const sealClient = new IntenusSealClient({ network: 'testnet' });
 const encrypted = await encryptIntentData(
   sealClient,
   intentData,
-  batchId,
-  signer
+  'user_context_123'
 );
 
 // Store to Walrus
@@ -215,7 +208,7 @@ const decrypted = await decryptIntentData(
   sealClient,
   encryptedData,
   intentObjectId,
-  signer
+  solverKeypair
 );
 ```
 
@@ -226,12 +219,12 @@ const decrypted = await decryptIntentData(
 ```typescript
 // High-value intents: Higher threshold
 const encrypted = await encryptIntentData(
-  client, intent, batchId, signer, { threshold: 3 }
+  client, intent, 'context_123', { threshold: 3 }
 );
 
 // Low-value: Lower threshold for speed
 const encrypted = await encryptIntentData(
-  client, intent, batchId, signer, { threshold: 2 }
+  client, intent, 'context_123', { threshold: 2 }
 );
 ```
 

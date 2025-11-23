@@ -15,6 +15,7 @@ import {
 } from '@intenus/seal';
 import { WalrusStorageError } from '../types/index.js';
 import { WriteBlobFlow } from '@mysten/walrus';
+import { IGSIntent, IGSSolution } from '@intenus/common';
 
 export interface EncryptedStorageResult extends StorageResult {
   encryption: EncryptionResult;
@@ -46,7 +47,7 @@ export class EncryptedStorageService extends BaseStorageService {
    * @returns Storage result with encryption metadata
    */
   async storeEncryptedIntent(
-    data: any,
+    data: IGSIntent,
     config: IntentEncryptionConfig,
     epochs: number,
     signer: Signer
@@ -102,7 +103,7 @@ export class EncryptedStorageService extends BaseStorageService {
    * @returns Storage result with encryption metadata
    */
   async storeEncryptedSolution(
-    data: any,
+    data: IGSSolution,
     config: SolutionEncryptionConfig,
     epochs: number,
     signer: Signer
@@ -196,7 +197,7 @@ export class EncryptedStorageService extends BaseStorageService {
    * @returns WriteBlobFlow and encryption metadata
    */
   async storeEncryptedIntentReturnFlow(
-    data: any,
+    data: IGSIntent,
     config: IntentEncryptionConfig
   ): Promise<{ flow: WriteBlobFlow; encryption: EncryptionResult }> {
     if (!this.sealClient) {
@@ -244,7 +245,7 @@ export class EncryptedStorageService extends BaseStorageService {
    * @returns WriteBlobFlow and encryption metadata
    */
   async storeEncryptedSolutionReturnFlow(
-    data: any,
+    data: IGSSolution,
     config: SolutionEncryptionConfig
   ): Promise<{ flow: WriteBlobFlow; encryption: EncryptionResult }> {
     if (!this.sealClient) {
