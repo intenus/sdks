@@ -48,6 +48,27 @@ export type {
   ClassificationInference,
 } from './dataset.js';
 
+// Input Intent Classification
+export type {
+  InputIntentClassification,
+  TimeInForceType,
+  OptimizationGoalType,
+  AssetTypeType,
+} from './input-intent-classification.js';
+
+export {
+  TimeInForce,
+  OptimizationGoal,
+  AssetType,
+  TimeInForceSchema,
+  OptimizationGoalSchema,
+  AssetTypeSchema,
+  InputIntentClassificationSchema,
+  validateInputIntentClassification,
+  isValidInputIntentClassification,
+  assertValidInputIntentClassification,
+} from './input-intent-classification.js';
+
 // IGS Validation
 export {
   IGSSchemaValidator,
