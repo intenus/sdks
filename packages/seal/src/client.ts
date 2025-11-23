@@ -124,16 +124,14 @@ export class IntenusSealClient {
 
   /**
    * Encrypt intent data for authorized solvers.
-   * 
+   *
    * @param data - Intent data as byte array
    * @param config - Encryption configuration including policy and threshold
-   * @param signer - User's keypair
    * @returns Encrypted data with policy metadata and backup key
    */
   async encryptIntent(
     data: Uint8Array,
-    config: IntentEncryptionConfig,
-    signer: Signer
+    config: IntentEncryptionConfig
   ): Promise<EncryptionResult> {
     try {
       const { encryptedObject, key } = await this.sealClient.encrypt({
@@ -165,13 +163,11 @@ export class IntenusSealClient {
    *
    * @param data - Solution data as byte array
    * @param config - Solution encryption config
-   * @param signer - Solver's keypair
    * @returns Encrypted solution with policy metadata
    */
   async encryptSolution(
     data: Uint8Array,
-    config: SolutionEncryptionConfig,
-    signer: Signer
+    config: SolutionEncryptionConfig
   ): Promise<EncryptionResult> {
     try {
       const { encryptedObject, key } = await this.sealClient.encrypt({

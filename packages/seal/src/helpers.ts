@@ -2,7 +2,7 @@
  * Helper utilities for encryption and decryption workflows
  */
 
-import { Signer } from '@mysten/sui/cryptography';
+import type { Signer } from '@mysten/sui/cryptography';
 import type { IntenusSealClient } from './client.js';
 import type {
   IntentEncryptionConfig,
@@ -18,7 +18,6 @@ import { toHex } from '@mysten/sui/utils';
  * @param client - Initialized Seal client
  * @param intentData - Intent data object (will be JSON serialized)
  * @param batchId - Batch identifier for grouping
- * @param signer - User's keypair
  * @param options - Optional encryption config overrides
  * @returns Encryption result with policy metadata
  */
@@ -26,7 +25,6 @@ export async function encryptIntentData(
   client: IntenusSealClient,
   intentData: any,
   batchId: string,
-  signer: Signer,
   options?: Partial<IntentEncryptionConfig>
 ): Promise<EncryptionResult> {
   const protocolPackageId = client.getPackageId();
@@ -44,7 +42,7 @@ export async function encryptIntentData(
   };
 
   const data = new TextEncoder().encode(JSON.stringify(intentData));
-  return client.encryptIntent(data, config, signer);
+  return client.encryptIntent(data, config);
 }
 
 /**
@@ -54,7 +52,6 @@ export async function encryptIntentData(
  * @param client - Seal client instance
  * @param solutionData - Solution data object
  * @param solverId - Unique solver identifier
- * @param signer - Solver's keypair
  * @param options - Solution-specific encryption options
  * @returns Encrypted solution result
  */
@@ -62,7 +59,6 @@ export async function encryptSolutionData(
   client: IntenusSealClient,
   solutionData: any,
   solverId: string,
-  signer: Signer,
   options?: Partial<SolutionEncryptionConfig>
 ): Promise<EncryptionResult> {
   const protocolPackageId = client.getPackageId();
@@ -77,7 +73,7 @@ export async function encryptSolutionData(
   };
 
   const data = new TextEncoder().encode(JSON.stringify(solutionData));
-  return client.encryptSolution(data, config, signer);
+  return client.encryptSolution(data, config);
 }
 
 /**

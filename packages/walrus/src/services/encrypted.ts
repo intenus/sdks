@@ -14,6 +14,7 @@ import {
   type EncryptionResult
 } from '@intenus/seal';
 import { WalrusStorageError } from '../types/index.js';
+import { WriteBlobFlow } from '@mysten/walrus';
 
 export interface EncryptedStorageResult extends StorageResult {
   encryption: EncryptionResult;
@@ -41,7 +42,7 @@ export class EncryptedStorageService extends BaseStorageService {
    * @param data - Intent data to encrypt and store
    * @param config - Seal encryption configuration
    * @param epochs - Walrus storage duration
-   * @param signer - User's keypair for both encryption and storage
+   * @param signer - User's keypair for storage
    * @returns Storage result with encryption metadata
    */
   async storeEncryptedIntent(
@@ -64,8 +65,7 @@ export class EncryptedStorageService extends BaseStorageService {
       // Encrypt with Seal
       const encryptionResult = await this.sealClient.encryptIntent(
         dataBytes,
-        config,
-        signer
+        config
       );
 
       // Store encrypted data to Walrus
@@ -98,7 +98,7 @@ export class EncryptedStorageService extends BaseStorageService {
    * @param data - Solution data to encrypt and store
    * @param config - Seal solution encryption config
    * @param epochs - Walrus storage duration
-   * @param signer - Solver's keypair
+   * @param signer - User's keypair for storage
    * @returns Storage result with encryption metadata
    */
   async storeEncryptedSolution(
@@ -121,8 +121,7 @@ export class EncryptedStorageService extends BaseStorageService {
       // Encrypt with Seal
       const encryptionResult = await this.sealClient.encryptSolution(
         dataBytes,
-        config,
-        signer
+        config
       );
 
       // Store encrypted data to Walrus
@@ -184,6 +183,102 @@ export class EncryptedStorageService extends BaseStorageService {
       throw new WalrusStorageError(
         `Failed to store encrypted data: ${error.message}`,
         'ENCRYPTED_STORE_ERROR'
+      );
+    }
+  }
+
+  /**
+   * Store encrypted intent and return WriteBlobFlow for transaction building
+   * Encrypts intent data with Seal then creates a flow for Walrus storage
+   *
+   * @param data - Intent data to encrypt
+   * @param config - Seal encryption configuration
+   * @returns WriteBlobFlow and encryption metadata
+   */
+  async storeEncryptedIntentReturnFlow(
+    data: any,
+    config: IntentEncryptionConfig
+  ): Promise<{ flow: WriteBlobFlow; encryption: EncryptionResult }> {
+    if (!this.sealClient) {
+      throw new WalrusStorageError(
+        'Seal client not initialized. Call initializeSeal() first.',
+        'SEAL_NOT_INITIALIZED'
+      );
+    }
+
+    try {
+      // Prepare data for encryption
+      const dataBytes = new TextEncoder().encode(JSON.stringify(data));
+
+      // Encrypt with Seal
+      const encryptionResult = await this.sealClient.encryptIntent(
+        dataBytes,
+        config
+      );
+
+      // Create flow for Walrus storage
+      const flow = this.client.walrusClient.writeBlobFlow({
+        blob: encryptionResult.encryptedData,
+      });
+
+      await flow.encode();
+
+      return {
+        flow,
+        encryption: encryptionResult,
+      };
+    } catch (error: any) {
+      throw new WalrusStorageError(
+        `Failed to create encrypted intent flow: ${error.message}`,
+        'ENCRYPTED_INTENT_FLOW_ERROR'
+      );
+    }
+  }
+
+  /**
+   * Store encrypted solution and return WriteBlobFlow for transaction building
+   * Encrypts solution data with Seal then creates a flow for Walrus storage
+   *
+   * @param data - Solution data to encrypt
+   * @param config - Seal solution encryption config
+   * @returns WriteBlobFlow and encryption metadata
+   */
+  async storeEncryptedSolutionReturnFlow(
+    data: any,
+    config: SolutionEncryptionConfig
+  ): Promise<{ flow: WriteBlobFlow; encryption: EncryptionResult }> {
+    if (!this.sealClient) {
+      throw new WalrusStorageError(
+        'Seal client not initialized. Call initializeSeal() first.',
+        'SEAL_NOT_INITIALIZED'
+      );
+    }
+
+    try {
+      // Prepare data for encryption
+      const dataBytes = new TextEncoder().encode(JSON.stringify(data));
+
+      // Encrypt with Seal
+      const encryptionResult = await this.sealClient.encryptSolution(
+        dataBytes,
+        config
+      );
+
+      // Create flow for Walrus storage
+      const flow = this.client.walrusClient.writeBlobFlow({
+        blob: encryptionResult.encryptedData,
+      });
+
+      await flow.encode();
+
+      return {
+        flow,
+        encryption: encryptionResult,
+      };
+    } catch (error: any) {
+      throw new WalrusStorageError(
+        `Failed to create encrypted solution flow: ${error.message}`,
+        'ENCRYPTED_SOLUTION_FLOW_ERROR'
       );
     }
   }
