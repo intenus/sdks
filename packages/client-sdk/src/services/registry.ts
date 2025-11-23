@@ -3,10 +3,10 @@
  * This is the core service for submitting intents and solutions
  */
 
-import { Transaction } from '@mysten/sui/transactions';
+import { Transaction, type TransactionArgument } from '@mysten/sui/transactions';
 import type { SuiClient } from '@mysten/sui/client';
 import type { Signer } from '@mysten/sui/cryptography';
-import { INTENUS_PACKAGE_ID, SHARED_OBJECTS, MODULES } from '../constants.js';
+import { INTENUS_PACKAGE_ID, SHARED_OBJECTS, MODULES, REGISTRY_CONSTANTS } from '../constants.js';
 import type { IntenusClientConfig, TransactionResult } from '../types.js';
 
 /**
@@ -55,18 +55,30 @@ export class RegistryService {
    *
    * @param blobId - Walrus blob ID containing the IGS intent
    * @param policy - Policy parameters for access control
-   * @param fee - SUI coin object ID for intent fee (minimum MIN_INTENT_FEE)
+   * @param options - Optional parameters
+   * @param options.fee - Pre-split fee coin (TransactionArgument). If not provided, will split from gas
+   * @param options.feeAmount - Amount to split from gas coin in MIST (default: MIN_INTENT_FEE)
    * @returns Transaction for intent submission
    */
   submitIntentTransaction(
     blobId: string,
     policy: IntentPolicyParams,
-    fee: string
+    options?: {
+      fee?: TransactionArgument;
+      feeAmount?: number | string;
+    }
   ): Transaction {
     const packageId = INTENUS_PACKAGE_ID[this.config.network];
     const sharedObjects = SHARED_OBJECTS[this.config.network];
 
     const tx = new Transaction();
+
+    // Split fee from gas coin if not provided
+    const feeCoin = options?.fee || (() => {
+      const amount = options?.feeAmount || REGISTRY_CONSTANTS.MIN_INTENT_FEE;
+      const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amount)]);
+      return coin;
+    })();
 
     tx.moveCall({
       target: `${packageId}::${MODULES.REGISTRY}::submit_intent`,
@@ -79,7 +91,7 @@ export class RegistryService {
         tx.pure.u64(policy.min_solver_stake),
         tx.pure.bool(policy.requires_attestation),
         tx.pure.u64(policy.min_solver_reputation_score),
-        tx.object(fee),
+        feeCoin,
         tx.object(sharedObjects.clock)
       ]
     });
@@ -93,18 +105,23 @@ export class RegistryService {
    *
    * @param blobId - Walrus blob ID containing the IGS intent
    * @param policy - Policy parameters for access control
-   * @param fee - SUI coin object ID for intent fee (minimum MIN_INTENT_FEE)
+   * @param options - Optional parameters
+   * @param options.fee - Pre-split fee coin (TransactionArgument). If not provided, will split from gas
+   * @param options.feeAmount - Amount to split from gas coin in MIST (default: MIN_INTENT_FEE)
    * @param signer - User's keypair
    * @returns Transaction result with created Intent object
    */
   async submitIntent(
     blobId: string,
     policy: IntentPolicyParams,
-    fee: string,
+    options: {
+      fee?: TransactionArgument;
+      feeAmount?: number | string;
+    } | undefined,
     signer: Signer
   ): Promise<TransactionResult> {
     try {
-      const tx = this.submitIntentTransaction(blobId, policy, fee);
+      const tx = this.submitIntentTransaction(blobId, policy, options);
 
       const result = await this.suiClient.signAndExecuteTransaction({
         transaction: tx,
