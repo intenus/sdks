@@ -28,6 +28,12 @@ export enum AssetType {
   volatile = "volatile"
 }
 
+export enum BenchmarkSource {
+  coingecko = "coingecko",
+  dexscreener = "dexscreener",
+  internal = "internal"
+}
+
 // ============================================================================
 // ZOD SCHEMAS FOR ENUMS
 // ============================================================================
@@ -49,6 +55,12 @@ export const AssetTypeSchema = z.enum([
   "native",
   "stable",
   "volatile"
+]);
+
+export const BenchmarkSourceSchema = z.enum([
+  "coingecko",
+  "dexscreener",
+  "internal"
 ]);
 
 // ============================================================================
@@ -80,7 +92,7 @@ export const InputIntentClassificationSchema = z.object({
   // Categorical features (enums)
   time_in_force: TimeInForceSchema,
   optimization_goal: OptimizationGoalSchema,
-  benchmark_source: z.string().min(1).max(100), // coingecko, 1inch, paraswap, internal, etc.
+  benchmark_source: BenchmarkSourceSchema,
   client_platform: z.string().min(1).max(100), // web, mobile, api, bot
 
   // Array features
@@ -103,6 +115,7 @@ export type InputIntentClassification = z.infer<typeof InputIntentClassification
 export type TimeInForceType = z.infer<typeof TimeInForceSchema>;
 export type OptimizationGoalType = z.infer<typeof OptimizationGoalSchema>;
 export type AssetTypeType = z.infer<typeof AssetTypeSchema>;
+export type BenchmarkSourceType = z.infer<typeof BenchmarkSourceSchema>;
 
 // ============================================================================
 // VALIDATION HELPERS
