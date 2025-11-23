@@ -38,66 +38,96 @@
     },
     "IntentClassification": {
       "type": "object",
-      "description": "Intent classification result from ML or rule-based classifier",
+      "description": "Intent classification result from ML classifier",
       "required": [
         "primary_category",
+        "primary_category_confidence",
         "detected_priority",
+        "detected_priority_confidence",
         "complexity_level",
+        "complexity_level_confidence",
         "risk_level",
-        "confidence",
+        "risk_level_confidence",
         "strategy",
+        "strategy_confidence",
         "weights"
       ],
       "properties": {
         "primary_category": {
           "type": "string",
           "enum": ["swap", "limit_order", "complex_defi", "arbitrage", "other"],
-          "description": "Primary intent category detected"
+          "description": "Primary detected intent category"
         },
+        "primary_category_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+
         "detected_priority": {
           "type": "string",
           "enum": ["speed", "cost", "output", "balanced"],
           "description": "User priority detected from constraints"
         },
-        "complexity_level": {
-          "type": "string",
-          "enum": ["simple", "moderate", "complex"],
-          "description": "Intent complexity level"
-        },
-        "risk_level": {
-          "type": "string",
-          "enum": ["low", "medium", "high"],
-          "description": "Risk level assessment"
-        },
-        "confidence": {
+        "detected_priority_confidence": {
           "type": "number",
           "minimum": 0,
-          "maximum": 1,
-          "description": "Confidence in classification (0-1)"
+          "maximum": 1
         },
+
+        "complexity_level": {
+          "type": "string",
+          "enum": ["simple", "moderate", "complex"]
+        },
+        "complexity_level_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+
+        "risk_level": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "risk_level_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+
         "strategy": {
           "type": "string",
-          "description": "Strategy used for classification"
+          "description": "Detected optimal strategy"
         },
+        "strategy_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+
         "weights": {
           "type": "object",
           "required": [
-            "gt_surplus_usd",
-            "gt_surplus_percentage",
-            "gt_gas_cost",
-            "gt_protocol_fees",
-            "gt_total_cost",
-            "gt_total_hops",
-            "gt_protocols_count"
+            "gt_weight_surplus_usd",
+            "gt_weight_surplus_percentage",
+            "gt_weight_gas_cost",
+            "gt_weight_protocol_fees",
+            "gt_weight_total_hops",
+            "gt_weight_protocols_count",
+            "gt_weight_estimated_execution_time",
+            "gt_weight_solver_reputation_score",
+            "gt_weight_solver_success_rate"
           ],
           "properties": {
-            "gt_surplus_usd": { "type": "number" },
-            "gt_surplus_percentage": { "type": "number" },
-            "gt_gas_cost": { "type": "number" },
-            "gt_protocol_fees": { "type": "number" },
-            "gt_total_cost": { "type": "number" },
-            "gt_total_hops": { "type": "number" },
-            "gt_protocols_count": { "type": "number" }
+            "gt_weight_surplus_usd": { "type": "number" },
+            "gt_weight_surplus_percentage": { "type": "number" },
+            "gt_weight_gas_cost": { "type": "number" },
+            "gt_weight_protocol_fees": { "type": "number" },
+            "gt_weight_total_hops": { "type": "number" },
+            "gt_weight_protocols_count": { "type": "number" },
+            "gt_weight_estimated_execution_time": { "type": "number" },
+            "gt_weight_solver_reputation_score": { "type": "number" },
+            "gt_weight_solver_success_rate": { "type": "number" }
           }
         }
       }
@@ -163,6 +193,7 @@
                   "surplus_percentage": { "type": "number" },
                   "gas_cost": { "type": "number" },
                   "protocol_fees": { "type": "number" },
+                  "total_cost": { "type": "number" },
                   "total_hops": { "type": "number" },
                   "protocols_count": { "type": "number" },
                   "estimated_execution_time": { "type": "number" },
@@ -241,6 +272,10 @@
         "solver_address": {
           "type": "string",
           "description": "Solver address"
+        },
+        "transaction_bytes": {
+          "type": "string",
+          "description": "Transaction bytes for execution"
         },
         "score_breakdown": {
           "type": "object",

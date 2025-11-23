@@ -64,30 +64,36 @@ export interface SolutionSubmission {
  */
 export interface IntentClassification {
   /** Primary intent category detected */
-  primary_category:
-    | "swap"
-    | "limit_order"
-    | "complex_defi"
-    | "arbitrage"
-    | "other";
-  /** Sub-category for fine-grained classification */
-  sub_category?: string;
+  primary_category: "swap" | "limit_order" | "complex_defi" | "arbitrage" | "other";
+  /** Confidence in primary category classification (0-1) */
+  primary_category_confidence: number;
   /** User priority detected from constraints and preferences */
   detected_priority: "speed" | "cost" | "output" | "balanced";
+  /** Confidence in detected priority (0-1) */
+  detected_priority_confidence: number;
   /** Complexity level based on constraints and routing */
   complexity_level: "simple" | "moderate" | "complex";
+  /** Confidence in complexity level (0-1) */
+  complexity_level_confidence: number;
   /** Risk level assessment */
   risk_level: "low" | "medium" | "high";
-  /** Confidence in classification (0-1) */
-  confidence: number;
-  /** Classification metadata */
-  metadata: {
-    /** Classification method used */
-    method: "rule_based" | "ml_model" | "hybrid";
-    /** Model version (if ML used) */
-    model_version?: string;
-    /** Features used in classification */
-    features_used?: string[];
+  /** Confidence in risk level (0-1) */
+  risk_level_confidence: number;
+  /** Detected optimal strategy */
+  strategy: string;
+  /** Confidence in strategy (0-1) */
+  strategy_confidence: number;
+  /** Feature weights for ranking (gradient tree weights) */
+  weights: {
+    gt_weight_surplus_usd: number;
+    gt_weight_surplus_percentage: number;
+    gt_weight_gas_cost: number;
+    gt_weight_protocol_fees: number;
+    gt_weight_total_hops: number;
+    gt_weight_protocols_count: number;
+    gt_weight_estimated_execution_time: number;
+    gt_weight_solver_reputation_score: number;
+    gt_weight_solver_success_rate: number;
   };
 }
 
@@ -172,6 +178,8 @@ export interface RankedSolution {
   solution_id: string;
   /** Solver address */
   solver_address: string;
+  /** Transaction bytes for execution */
+  transaction_bytes: string;
   /** Detailed scoring breakdown */
   score_breakdown: {
     surplus_score: number;
@@ -214,8 +222,6 @@ export interface RankingResult {
     average_score: number;
     /** Ranking strategy used (based on intent classification) */
     strategy: string;
-    /** Strategy version/identifier */
-    strategy_version: string;
     /** Intent classification that determined strategy */
     intent_category: string;
   };
