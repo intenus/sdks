@@ -24,8 +24,7 @@ export interface Intent {
       requires_solver_registration: boolean;
       min_solver_stake: number;
       requires_attestation: boolean;
-      expected_measurement: string[];
-      purpose: string[];
+      min_solver_reputation_score: number;
     };
   };
   status: number;

@@ -16,8 +16,7 @@ const IGSAccessConditionSchema = z.object({
   requires_solver_registration: z.boolean(),
   min_solver_stake: z.string().regex(/^[0-9]+$/),
   requires_tee_attestation: z.boolean(),
-  expected_measurement: z.string(),
-  purpose: z.string().max(200),
+  min_solver_reputation_score: z.number().min(0).max(100),
 });
 
 const IGSSolverAccessWindowSchema = z.object({
