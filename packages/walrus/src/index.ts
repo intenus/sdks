@@ -22,8 +22,10 @@ export type {
   IntentStorageService,
   SolutionStorageService,
   DatasetStorageService,
+  EncryptedStorageService,
   DatasetVersionBuilder,
-  DatasetVersionResult
+  DatasetVersionResult,
+  EncryptedStorageResult
 } from './services/index.js';
 
 // Constants
@@ -34,9 +36,18 @@ export {
 } from './constants/index.js';
 
 // Re-export useful Walrus types
-export type { 
+export type {
   WalrusClient,
   WalrusClientConfig,
   WalrusOptions,
   WalrusFile
 } from '@mysten/walrus';
+
+// Re-export Seal types for encrypted storage
+export type {
+  IntenusSealClient,
+  IntentEncryptionConfig,
+  SolutionEncryptionConfig,
+  EncryptionResult,
+  DecryptionRequest
+} from '@intenus/seal';

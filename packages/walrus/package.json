@@ -1,6 +1,6 @@
 {
   "name": "@intenus/walrus",
-  "version": "2.4.2",
+  "version": "2.5.0",
   "description": "Walrus storage wrapper for Intenus Protocol (AI infra standard)",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -28,6 +28,8 @@
   },
   "dependencies": {
     "@intenus/common": "workspace:*",
+    "@intenus/seal": "workspace:*",
+    "@mysten/seal": "^0.9.3",
     "@mysten/walrus": "^0.8.3",
     "@mysten/sui": "^1.44.0"
   },
@@ -38,6 +40,7 @@
     "vitest": "^1.0.0"
   },
   "peerDependencies": {
+    "@mysten/seal": "^0.9.3",
     "@mysten/walrus": "^0.8.3",
     "@mysten/sui": "^1.44.0"
   },

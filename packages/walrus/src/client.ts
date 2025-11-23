@@ -10,6 +10,7 @@ import {
   IntentStorageService,
   SolutionStorageService,
   DatasetStorageService,
+  EncryptedStorageService,
 } from "./services/index.js";
 import type { IntenusWalrusConfig, StorageResult } from "./types/index.js";
 import { WalrusStorageError, WalrusFetchError } from "./types/index.js";
@@ -22,6 +23,7 @@ export class IntenusWalrusClient {
   public readonly intents: IntentStorageService;
   public readonly solutions: SolutionStorageService;
   public readonly datasets: DatasetStorageService;
+  public readonly encrypted: EncryptedStorageService;
 
   constructor(config: IntenusWalrusConfig) {
     const networkConfig =
@@ -62,6 +64,7 @@ export class IntenusWalrusClient {
     this.intents = new IntentStorageService(this);
     this.solutions = new SolutionStorageService(this);
     this.datasets = new DatasetStorageService(this);
+    this.encrypted = new EncryptedStorageService(this);
   }
 
 
