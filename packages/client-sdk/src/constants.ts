@@ -7,7 +7,7 @@
  */
 export const INTENUS_PACKAGE_ID = {
   mainnet: '',
-  testnet: '0xb9d9333ca0cb165c6337696bc02bc66a308291b6b8a104810e57a66a2ac24f76',
+  testnet: '0x993c7635b44582e9c47c589c759239d3e1ce787811af5bfa0056aa253caa394a',
   devnet: ''
 } as const;
 
@@ -24,11 +24,11 @@ export const SHARED_OBJECTS = {
     clock: '0x6'
   },
   testnet: {
-    solverRegistry: '0xa5955d70c88f90a87b81a4c9493a9eb53ac1d7f392b60c528194c092f94d652e',
-    slashManager: '0x6e561036e166f362ffe7b1defccae1bc120c0dead05de2ad75174fe1b5c5e330',
-    teeVerifier: '0x9bf41dc9d81c0d2ac8c78a25eb60ecc12ab46b513304e0e9edb0e5ede8f310af',
-    enclaveConfig: '', // Need to update after deployment
-    treasury: '', // Need to update after deployment
+    solverRegistry: '0xf71c16414b66054dfe9ebca5f22f8076a8294715d5a3e4ae4b2b4e0cd5d7e64a',
+    slashManager: '0x1d023609156241468439e933c094dba4982d35292b0dd21c66cf85cc8f53b283',
+    teeVerifier: '0xf0867b65374e34905b7737432e93d53722b08bc39cd621740b685a366272f857',
+    enclaveConfig: '0xe525e478d2448b4e895d744b31f9fa7cab599f6ce5c36b6b24dab2f9c54ad0fd',
+    treasury: '0x1aa5d3878fac1e2b10bf471bd1cbef6868ca1d04643c24c3d3b358d762f34f53',
     clock: '0x6'
   },
   devnet: {
@@ -53,11 +53,11 @@ export const ADMIN_CAPS = {
     packagePublisher: ''
   },
   testnet: {
-    solverRegistryAdminCap: '0xec1adbd61ba4f6c7615d13539c7491cfb9d5ca00d65995680151a937dc895549',
-    slashManagerAdminCap: '0xe9de82865a5a81fd1f65b968ef8ba1101cf6d195e5c1133e1463ddde88bbbadb',
-    teeVerifierAdminCap: '0x5596772626feb77faafdf49544c0bb968d0e338f39e89bbf3d02d33698452a1d',
-    packageUpgradeCap: '0x57bb108f36ee8c848a46444af60ff6c52ade4fa74adbb10bd0e821059558b813',
-    packagePublisher: '0xfb64e69eb33d5fd21dea680aea62d6299d66dc4ce1f32958230c1a2f66eb4cc0'
+    solverRegistryAdminCap: '0xaf69f4d0fa49c43bfa9bfe382467eacd33ead8e2bb36aeb6fcb8f1df36d60909',
+    slashManagerAdminCap: '0xbe3b9146c100a38b106161c2d03e91432e8a608e1873ce1f894e576c63e70ea0',
+    teeVerifierAdminCap: '0x392ea4b56d73d59cb32e132fa7f610a7fb5f1e97d0983af6bfced645bea59e9f',
+    packageUpgradeCap: '0xa25adda6a6965df626313123b48c067a342c21127932b4c2f7ba83dcfb71c288',
+    packagePublisher: '0x01741371472c4a88b2a8670c72f4ad96285eb13ddfa51c1b8abe3a76dd128014'
   },
   devnet: {
     solverRegistryAdminCap: '',

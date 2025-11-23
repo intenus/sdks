@@ -1,6 +1,6 @@
 {
   "name": "@intenus/client-sdk",
-  "version": "2.6.3",
+  "version": "2.6.4",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
